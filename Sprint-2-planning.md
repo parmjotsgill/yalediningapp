@@ -9,12 +9,14 @@ This sprint focuses on getting the foundation live and stable.
 ## Selected User Stories
 | # | Story | Points | Assignee |
 |--|--|--:|--|
-| #1 | Set up Django project with PostgreSQL | 5 | Louis |
-| #2 | Create database models (DiningHall, Menu, Dish) | 3 | Sachit |
-| #3 | Build unified menu table UI (sample data) | 8 | Parm |
-| #4 | Implement meal period filter | 5 | Louis |
-| #5 | Deploy to Render staging | 5 | Sachit |
-| #6 | Create README and setup documentation | 2 | Parm |
+| #1 | Set up Django project with PostgreSQL | 5 | Louis | ASSIGNED
+| #2 | Create database models (DiningHall, Menu, Dish) | 3 | Sachit | ASSIGNED
+| #3 | Deploy to Render staging | 5 | Sachit | ASSIGNED
+| #4 | Create README and setup documentation | 2 | Parm | ASSIGNED
+| #5 | Configure GitHub Project with custom fields and views | 3 | Parm | ASSIGNED
+| #6 | Create issue templates (user story, task, bug) | 2 | Parm | ASSIGNED 
+| #7 | Build unified menu table UI (sample data) | 8 | Piquet | ASSIGNED
+| #8 | Implement meal period filter | 5 | Louis | ASSIGNED
 
 **Total Committed Story Points:** 28 (≈ 28 hours of work)
 
