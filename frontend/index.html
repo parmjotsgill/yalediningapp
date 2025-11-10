@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yale Dining Menu - Radiant Phoenix</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #fafafa;
+      margin: 0;
+      padding: 20px;
+      color: #222;
+    }
+    h1 {
+      text-align: center;
+      color: #005587;
+      margin-bottom: 1rem;
+    }
+    .hall {
+      background: #fff;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .meal {
+      margin-bottom: 1rem;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 0.3rem;
+    }
+    h3 {
+      color: #005587;
+      margin-top: 0.5rem;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.3rem 0 1rem 0;
+    }
+    li {
+      background: #f3f8fb;
+      margin: 0.25rem 0;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+    }
+    .no-items {
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Yale Dining Hall Menus (Filtered)</h1>
+  <div id="content">Loading menus...</div>
+
+  <script>
+    const API_URL = "http://localhost:4000/api/dining/all?days=1";
+
+    const excludeKeywords = [
+      "unknown", "sauce", "juice", "milk", "tea", "coffee", "butter",
+      "condiment", "crackers", "cookies", "chips", "vinegar", "syrup",
+      "seasoning", "granola", "sprinkles", "cereal", "oil", "sugar",
+      "salt", "pepper", "powder", "hot chocolate", "gatorade", "bubbly",
+      "pepsi", "starry", "fruit punch"
+    ];
+
+    async function loadMenus() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const container = document.getElementById("content");
+        container.innerHTML = "";
+
+        data.halls.forEach(hall => {
+          const hallDiv = document.createElement("div");
+          hallDiv.className = "hall";
+
+          const title = document.createElement("h2");
+          title.textContent = hall.name;
+          hallDiv.appendChild(title);
+
+          hall.days.forEach(day => {
+            const dateLabel = document.createElement("p");
+            dateLabel.innerHTML = `<strong>Date:</strong> ${day.date}`;
+            hallDiv.appendChild(dateLabel);
+
+            for (const [mealName, dishes] of Object.entries(day.meals)) {
+              const mealDiv = document.createElement("div");
+              mealDiv.className = "meal";
+
+              const mealTitle = document.createElement("h3");
+              mealTitle.textContent = mealName.charAt(0).toUpperCase() + mealName.slice(1);
+              mealDiv.appendChild(mealTitle);
+
+              const filtered = dishes.filter(item => {
+                const name = item.name.toLowerCase();
+                return name && !excludeKeywords.some(k => name.includes(k));
+              });
+
+              const ul = document.createElement("ul");
+
+              if (filtered.length === 0) {
+                const noItems = document.createElement("p");
+                noItems.className = "no-items";
+                noItems.textContent = "(No main dishes found)";
+                mealDiv.appendChild(noItems);
+              } else {
+                filtered.forEach(dish => {
+                  const li = document.createElement("li");
+                  li.textContent = dish.name;
+                  ul.appendChild(li);
+                });
+              }
+
+              mealDiv.appendChild(ul);
+              hallDiv.appendChild(mealDiv);
+            }
+          });
+
+          container.appendChild(hallDiv);
+        });
+      } catch (err) {
+        document.getElementById("content").textContent = "Error loading menus 😢";
+        console.error(err);
+      }
+    }
+
+    loadMenus();
+  </script>
+</body>
