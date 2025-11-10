@@ -1,11 +1,14 @@
+
 const express = require('express');
 const routes = require('./routes');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Parse JSON bodies (for future POST/PUT)
 app.use(express.json());
+app.use(cors());
 
 // Mount all API routes under /api
 app.use('/api', routes);
