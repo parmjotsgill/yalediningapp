@@ -1,134 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yale Dining Menu - Radiant Phoenix</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Yale Dining — Comparison Table</title>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #fafafa;
-      margin: 0;
-      padding: 20px;
-      color: #222;
+    :root{
+      --accent:#0b61b6;
+      --muted:#6b7280;
+      --bg:#f8fafc;
+      --card:#fff;
     }
-    h1 {
-      text-align: center;
-      color: #005587;
-      margin-bottom: 1rem;
-    }
-    .hall {
-      background: #fff;
-      padding: 1rem 1.5rem;
-      margin-bottom: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
-    .meal {
-      margin-bottom: 1rem;
-    }
-    h2 {
-      color: #333;
-      border-bottom: 2px solid #e0e0e0;
-      padding-bottom: 0.3rem;
-    }
-    h3 {
-      color: #005587;
-      margin-top: 0.5rem;
-    }
-    ul {
-      list-style: none;
-      padding-left: 0;
-      margin: 0.3rem 0 1rem 0;
-    }
-    li {
-      background: #f3f8fb;
-      margin: 0.25rem 0;
-      padding: 0.4rem 0.6rem;
-      border-radius: 6px;
-    }
-    .no-items {
-      color: #999;
-      font-style: italic;
-    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#0f172a}
+    header{background:var(--accent);color:white;padding:1rem;text-align:center}
+    .controls{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem;align-items:center;justify-content:center}
+    .btn{border:1px solid #e2e8f0;background:white;padding:.45rem .8rem;border-radius:999px;cursor:pointer}
+    .btn.active{background:var(--accent);color:white;border-color:var(--accent)}
+    .btn.danger{background:#ef4444;color:white;border:none}
+    .meal-select{display:flex;gap:.5rem;margin-left:.5rem}
+    .container{max-width:1200px;margin:1rem auto;padding:0 1rem}
+    .table-wrap{background:var(--card);border-radius:10px;padding:.5rem;box-shadow:0 6px 18px rgba(2,6,23,0.06);overflow:auto}
+    table{border-collapse:collapse;width:100%;min-width:800px}
+    th,td{padding:.75rem 1rem;border:1px solid #e6eef6;text-align:left;vertical-align:top}
+    th{background:var(--accent);color:white;position:sticky;top:0}
+    tr:nth-child(even){background:#fbfdff}
+    .dish-name{font-weight:600}
+    .tags{font-size:.85rem;color:var(--muted);margin-top:.25rem}
+    .empty{padding:1rem;text-align:center;color:var(--muted)}
+    @media (max-width:420px){th,td{padding:.5rem}}
   </style>
 </head>
 <body>
-  <h1>Yale Dining Hall Menus (Filtered)</h1>
-  <div id="content">Loading menus...</div>
+  <header>
+    <h1>Yale Dining — Side-by-Side Comparison</h1>
+    <div style="font-size:.95rem;opacity:.9">Compare today's meal across dining halls — choose meal and dietary filters</div>
+  </header>
 
-  <script>
-    const API_URL = "http://localhost:4000/api/dining/all?days=1";
+  <div class="container">
+    <div class="controls" id="controls">
+      <div id="mealButtons" class="meal-select"></div>
 
-    const excludeKeywords = [
-      "unknown", "sauce", "juice", "milk", "tea", "coffee", "butter",
-      "condiment", "crackers", "cookies", "chips", "vinegar", "syrup",
-      "seasoning", "granola", "sprinkles", "cereal", "oil", "sugar",
-      "salt", "pepper", "powder", "hot chocolate", "gatorade", "bubbly",
-      "pepsi", "starry", "fruit punch"
-    ];
+      <div style="display:flex;gap:.5rem;align-items:center;margin-left:8px;">
+        <button class="btn filter-btn" data-filter="vegan">Vegan</button>
+        <button class="btn filter-btn" data-filter="vegetarian">Vegetarian</button>
+        <button class="btn filter-btn" data-filter="gluten-free">Gluten-Free</button>
+        <button class="btn filter-btn" data-filter="halal">Halal</button>
+        <button id="clearFilters" class="btn danger">Clear All</button>
+      </div>
+    </div>
 
-    async function loadMenus() {
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        const container = document.getElementById("content");
-        container.innerHTML = "";
+    <div class="table-wrap" id="tableWrap">
+      <table id="menuTable" aria-describedby="desc">
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody id="bodyRows"></tbody>
+      </table>
+    </div>
 
-        data.halls.forEach(hall => {
-          const hallDiv = document.createElement("div");
-          hallDiv.className = "hall";
+    <div id="noResults" class="empty" style="display:none">No matching dishes found.</div>
+  </div>
 
-          const title = document.createElement("h2");
-          title.textContent = hall.name;
-          hallDiv.appendChild(title);
+<script>
+/*
+  Revised front-end for the dining menus.
+  - Expects API: http://localhost:4000/api/dining/all?days=1
+  - Data shape: { "halls": [ { slug, name, days: [{date, meals: { breakfast: [...], lunch: [...], dinner: [...] }}] } ] }
+*/
 
-          hall.days.forEach(day => {
-            const dateLabel = document.createElement("p");
-            dateLabel.innerHTML = `<strong>Date:</strong> ${day.date}`;
-            hallDiv.appendChild(dateLabel);
+const API_URL = 'http://localhost:4000/api/dining/all?days=1';
+let diningData = [];       // full halls array from API
+let selectedMeal = null;   // 'breakfast'|'lunch'|'dinner'
+const activeFilters = new Set();
 
-            for (const [mealName, dishes] of Object.entries(day.meals)) {
-              const mealDiv = document.createElement("div");
-              mealDiv.className = "meal";
+// heuristic keywords mapping for filter tags (lowercase substrings)
+const tagKeywords = {
+  'vegan': ['vegan', 'tofu', 'tempeh', 'vegan '],
+  'vegetarian': ['vegetarian', 'vegetable', 'cheese', 'egg', 'veggie', 'salad'],
+  'gluten-free': ['gluten-free', 'gluten free', 'gf', 'gluten-free'],
+  'halal': ['halal']
+};
 
-              const mealTitle = document.createElement("h3");
-              mealTitle.textContent = mealName.charAt(0).toUpperCase() + mealName.slice(1);
-              mealDiv.appendChild(mealTitle);
+// helper: normalize tag string
+function normalizeTag(t){ return String(t||'').toLowerCase().trim(); }
 
-              const filtered = dishes.filter(item => {
-                const name = item.name.toLowerCase();
-                return name && !excludeKeywords.some(k => name.includes(k));
-              });
-
-              const ul = document.createElement("ul");
-
-              if (filtered.length === 0) {
-                const noItems = document.createElement("p");
-                noItems.className = "no-items";
-                noItems.textContent = "(No main dishes found)";
-                mealDiv.appendChild(noItems);
-              } else {
-                filtered.forEach(dish => {
-                  const li = document.createElement("li");
-                  li.textContent = dish.name;
-                  ul.appendChild(li);
-                });
-              }
-
-              mealDiv.appendChild(ul);
-              hallDiv.appendChild(mealDiv);
-            }
-          });
-
-          container.appendChild(hallDiv);
-        });
-      } catch (err) {
-        document.getElementById("content").textContent = "Error loading menus 😢";
-        console.error(err);
-      }
+// fetch and initialize
+async function init(){
+  try {
+    const r = await fetch(API_URL);
+    if(!r.ok) throw new Error(`API returned ${r.status}`);
+    const json = await r.json();
+    diningData = json.halls || [];
+    if(!diningData.length){
+      document.getElementById('tableWrap').style.display='none';
+      document.getElementById('noResults').textContent = 'No dining halls returned by API';
+      document.getElementById('noResults').style.display = 'block';
+      return;
     }
+    // pick a default meal: prefer lunch -> dinner -> breakfast if present; else first meal found
+    const availableMeals = mealsAvailable();
+    selectedMeal = availableMeals.includes('lunch') ? 'lunch' : (availableMeals.includes('dinner') ? 'dinner' : availableMeals[0]);
+    renderMealButtons(availableMeals);
+    renderTable();
+    attachFilterHandlers();
+  } catch(err){
+    console.error(err);
+    document.getElementById('tableWrap').style.display='none';
+    document.getElementById('noResults').textContent = 'Error fetching menus (check backend).';
+    document.getElementById('noResults').style.display='block';
+  }
+}
 
-    loadMenus();
-  </script>
+// returns unique list of meals present (breakfast/lunch/dinner) across halls/days
+function mealsAvailable(){
+  const set = new Set();
+  for(const hall of diningData){
+    const day = (hall.days && hall.days[0]) || null;
+    if(!day || !day.meals) continue;
+    Object.keys(day.meals).forEach(m => set.add(m));
+  }
+  return Array.from(set);
+}
+
+// render meal selector (buttons)
+function renderMealButtons(meals){
+  const container = document.getElementById('mealButtons');
+  container.innerHTML = '';
+  meals.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + (m === selectedMeal ? 'active' : '');
+    btn.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+    btn.dataset.meal = m;
+    btn.addEventListener('click', () => {
+      selectedMeal = m;
+      document.querySelectorAll('#mealButtons .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable();
+    });
+    container.appendChild(btn);
+  });
+}
+
+// attach filter button listeners
+function attachFilterHandlers(){
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.filter;
+      if(activeFilters.has(tag)){ activeFilters.delete(tag); btn.classList.remove('active'); }
+      else { activeFilters.add(tag); btn.classList.add('active'); }
+      renderTable();
+    });
+  });
+  document.getElementById('clearFilters').addEventListener('click', () => {
+    activeFilters.clear();
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    renderTable();
+  });
+}
+
+// Heuristic: determine whether a dish matches all active filters
+function dishMatchesFilters(dish){
+  if(activeFilters.size === 0) return true; // no filter -> show
+  const normalizedTags = (dish.dietTags || []).map(t => normalizeTag(t));
+  const name = normalizeTag(dish.name || '');
+  // For each active filter, check tag presence OR name keyword
+  for(const f of activeFilters){
+    // check explicit dietTags first
+    if(normalizedTags.includes(f)) continue;
+    // check keywords mapping
+    const keywords = tagKeywords[f] || [];
+    const nameMatches = keywords.some(kw => name.includes(kw));
+    if(nameMatches) continue;
+    // otherwise this dish fails this filter
+    return false;
+  }
+  return true;
+}
+
+// Build and render the side-by-side table for selectedMeal
+function renderTable(){
+  const headerRow = document.getElementById('headerRow');
+  const body = document.getElementById('bodyRows');
+  headerRow.innerHTML = '';
+  body.innerHTML = '';
+
+  if(!selectedMeal){
+    headerRow.innerHTML = '<th>Dish</th><th>No meal selected</th>';
+    return;
+  }
+
+  // Header: Dish + each hall name
+  const firstTh = document.createElement('th'); firstTh.textContent = 'Dish'; headerRow.appendChild(firstTh);
+  diningData.forEach(hall => {
+    const th = document.createElement('th');
+    th.textContent = hall.name;
+    headerRow.appendChild(th);
+  });
+
+  // Build per-hall meal lists (cleaned)
+  const hallMealLists = diningData.map(hall => {
+    const day = (hall.days && hall.days[0]) || {};
+    const meals = day.meals || {};
+    const list = Array.isArray(meals[selectedMeal]) ? meals[selectedMeal] : [];
+    // filter unknown items and trim names
+    return list
+      .filter(d => d && d.name && !/^unknown/i.test(d.name))
+      .map(d => ({ name: d.name.trim(), dietTags: (d.dietTags||[]).map(t => normalizeTag(t)), raw: d }));
+  });
+
+  // Collect unique dish names across all halls for the selectedMeal
+  const allNames = new Set();
+  hallMealLists.forEach(list => list.forEach(d => allNames.add(d.name)));
+  const uniqueDishNames = Array.from(allNames).sort((a,b)=>a.localeCompare(b));
+
+  // For each dish name, determine if any hall has a dish that MATCHES ALL active filters.
+  // Only include rows where at least one hall has a matching dish.
+  const rowsToShow = uniqueDishNames.filter(dishName => {
+    // check across halls
+    for(const list of hallMealLists){
+      const d = list.find(x=>x.name===dishName);
+      if(!d) continue;
+      if(dishMatchesFilters(d.raw)) return true;
+    }
+    return false;
+  });
+
+  // If no rowsToShow then show friendly message
+  if(rowsToShow.length === 0){
+    document.getElementById('tableWrap').style.display='none';
+    document.getElementById('noResults').style.display='block';
+    return;
+  } else {
+    document.getElementById('tableWrap').style.display='';
+    document.getElementById('noResults').style.display='none';
+  }
+
+  // Build table rows
+  for(const dishName of rowsToShow){
+    const tr = document.createElement('tr');
+    // Dish name cell
+    const nameTd = document.createElement('td');
+    nameTd.className = 'dish-name';
+    nameTd.textContent = dishName;
+    tr.appendChild(nameTd);
+
+    // For each hall, display the dish if present and (if present) whether it matches filters (or empty)
+    for(const list of hallMealLists){
+      const td = document.createElement('td');
+      const d = list.find(x=>x.name===dishName);
+      if(!d){
+        td.textContent = '';
+      } else {
+        // show name (and tags if present)
+        const tagsText = (d.dietTags && d.dietTags.length) ? d.dietTags.join(', ') : '';
+        td.innerHTML = `<div>${d.name}</div>${tagsText ? `<div class="tags">${tagsText}</div>` : ''}`;
+        // If the dish does NOT match active filters, dim it to indicate it's not a match
+        if(!dishMatchesFilters(d.raw)){
+          td.style.opacity = '0.45';
+        } else {
+          td.style.opacity = '';
+        }
+      }
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
+
+// kick off
+init();
+</script>
 </body>
+</html>
+
+
+
