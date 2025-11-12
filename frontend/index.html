@@ -1,277 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Yale Dining — Comparison Table</title>
-  <style>
-    :root{
-      --accent:#0b61b6;
-      --muted:#6b7280;
-      --bg:#f8fafc;
-      --card:#fff;
-    }
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#0f172a}
-    header{background:var(--accent);color:white;padding:1rem;text-align:center}
-    .controls{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem;align-items:center;justify-content:center}
-    .btn{border:1px solid #e2e8f0;background:white;padding:.45rem .8rem;border-radius:999px;cursor:pointer}
-    .btn.active{background:var(--accent);color:white;border-color:var(--accent)}
-    .btn.danger{background:#ef4444;color:white;border:none}
-    .meal-select{display:flex;gap:.5rem;margin-left:.5rem}
-    .container{max-width:1200px;margin:1rem auto;padding:0 1rem}
-    .table-wrap{background:var(--card);border-radius:10px;padding:.5rem;box-shadow:0 6px 18px rgba(2,6,23,0.06);overflow:auto}
-    table{border-collapse:collapse;width:100%;min-width:800px}
-    th,td{padding:.75rem 1rem;border:1px solid #e6eef6;text-align:left;vertical-align:top}
-    th{background:var(--accent);color:white;position:sticky;top:0}
-    tr:nth-child(even){background:#fbfdff}
-    .dish-name{font-weight:600}
-    .tags{font-size:.85rem;color:var(--muted);margin-top:.25rem}
-    .empty{padding:1rem;text-align:center;color:var(--muted)}
-    @media (max-width:420px){th,td{padding:.5rem}}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Yale Dining — Compare Menus</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#f7f9fb;color:#0f172a}
+  header{background:#00356b;color:#fff;padding:1rem;text-align:center}
+  main{max-width:1100px;margin:1.5rem auto;padding:0 1rem}
+  .controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:center;margin-bottom:1rem}
+  select,button,input{padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:1rem}
+  button{cursor:pointer;background:#fff}
+  button.active{background:#00356b;color:#fff;border-color:#00356b}
+  .btn-danger{background:#ef4444;color:#fff;border:none}
+  .table-wrap{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.06);overflow:auto}
+  table{width:100%;min-width:700px;border-collapse:collapse}
+  th,td{padding:.75rem 1rem;border:1px solid #e6eef6;text-align:left;vertical-align:top}
+  th{background:#00356b;color:#fff;position:sticky;top:0}
+  tr:nth-child(even){background:#fbfdff}
+  .empty{text-align:center;color:#6b7280;padding:1rem}
+  ul.dish-list{list-style:none;margin:0;padding:0}
+  ul.dish-list li{padding:.35rem 0;border-bottom:1px dashed #eee}
+  .tags{font-size:.85rem;color:#6b7280;margin-top:.25rem}
+  @media(max-width:600px){table{display:block;overflow-x:auto;white-space:nowrap}}
+</style>
 </head>
 <body>
   <header>
-    <h1>Yale Dining — Side-by-Side Comparison</h1>
-    <div style="font-size:.95rem;opacity:.9">Compare today's meal across dining halls — choose meal and dietary filters</div>
+    <h1>Yale Dining — Compare Menus</h1>
+    <div style="opacity:.9;font-size:.95rem">Choose halls, meal, and dietary filters to compare menus side-by-side</div>
   </header>
 
-  <div class="container">
-    <div class="controls" id="controls">
-      <div id="mealButtons" class="meal-select"></div>
+  <main>
+    <div class="controls">
+      <label for="hallSelect">Dining Halls:</label>
+      <select id="hallSelect" multiple size="4" style="min-width:220px">
+        <option disabled>Loading halls...</option>
+      </select>
+      <button id="selectAllBtn">Select All</button>
 
-      <div style="display:flex;gap:.5rem;align-items:center;margin-left:8px;">
-        <button class="btn filter-btn" data-filter="vegan">Vegan</button>
-        <button class="btn filter-btn" data-filter="vegetarian">Vegetarian</button>
-        <button class="btn filter-btn" data-filter="gluten-free">Gluten-Free</button>
-        <button class="btn filter-btn" data-filter="halal">Halal</button>
-        <button id="clearFilters" class="btn danger">Clear All</button>
+      <label for="mealSelect">Meal:</label>
+      <select id="mealSelect">
+        <option value="breakfast">Breakfast</option>
+        <option value="lunch" selected>Lunch</option>
+        <option value="dinner">Dinner</option>
+      </select>
+
+      <div id="dietFilters" style="display:flex;gap:.5rem;align-items:center">
+        <button class="diet-btn" data-diet="vegan">Vegan</button>
+        <button class="diet-btn" data-diet="vegetarian">Vegetarian</button>
+        <button class="diet-btn" data-diet="gluten-free">Gluten-Free</button>
       </div>
+
+      <button id="clearFilters" class="btn-danger">Clear</button>
     </div>
 
-    <div class="table-wrap" id="tableWrap">
+    <div id="tableContainer" class="table-wrap" style="display:none">
       <table id="menuTable" aria-describedby="desc">
-        <thead>
-          <tr id="headerRow"></tr>
-        </thead>
+        <thead><tr id="headerRow"></tr></thead>
         <tbody id="bodyRows"></tbody>
       </table>
     </div>
 
-    <div id="noResults" class="empty" style="display:none">No matching dishes found.</div>
-  </div>
+    <div id="noResults" class="empty" style="display:none">No dishes match your filters.</div>
+  </main>
 
 <script>
-/*
-  Revised front-end for the dining menus.
-  - Expects API: http://localhost:4000/api/dining/all?days=1
-  - Data shape: { "halls": [ { slug, name, days: [{date, meals: { breakfast: [...], lunch: [...], dinner: [...] }}] } ] }
-*/
+/* CONFIG */
+const API = 'http://localhost:4000/api/dining/all?days=1';
 
-const API_URL = 'http://localhost:4000/api/dining/all?days=1';
-let diningData = [];       // full halls array from API
-let selectedMeal = null;   // 'breakfast'|'lunch'|'dinner'
-const activeFilters = new Set();
+/* State */
+let halls = [];            // list of hall objects from API
+let hallBySlug = {};       // slug -> hall
+let selectedSlugs = [];    // selected halls (slugs)
+let selectedMeal = 'lunch';
+let activeDiets = new Set();
 
-// heuristic keywords mapping for filter tags (lowercase substrings)
-const tagKeywords = {
-  'vegan': ['vegan', 'tofu', 'tempeh', 'vegan '],
-  'vegetarian': ['vegetarian', 'vegetable', 'cheese', 'egg', 'veggie', 'salad'],
-  'gluten-free': ['gluten-free', 'gluten free', 'gf', 'gluten-free'],
-  'halal': ['halal']
+/* Heuristic keywords for diet matching (lowercase substrings) */
+const dietKeywords = {
+  'vegan': ['vegan', 'tofu', 'tempeh', 'plant-based', 'vegan '],
+  'vegetarian': ['vegetarian', 'veggie', 'egg', 'cheese', 'paneer', 'vegetable'],
+  'gluten-free': ['gluten-free', 'gluten free', 'gf', 'gluten-free', 'gluten-free ']
+  // removed 'halal'
 };
 
-// helper: normalize tag string
-function normalizeTag(t){ return String(t||'').toLowerCase().trim(); }
+/* Helpers */
+const $ = id => document.getElementById(id);
 
-// fetch and initialize
+function normalize(s){ return String(s || '').toLowerCase().trim(); }
+
+/* Fetch & init */
 async function init(){
   try {
-    const r = await fetch(API_URL);
-    if(!r.ok) throw new Error(`API returned ${r.status}`);
-    const json = await r.json();
-    diningData = json.halls || [];
-    if(!diningData.length){
-      document.getElementById('tableWrap').style.display='none';
-      document.getElementById('noResults').textContent = 'No dining halls returned by API';
-      document.getElementById('noResults').style.display = 'block';
-      return;
-    }
-    // pick a default meal: prefer lunch -> dinner -> breakfast if present; else first meal found
-    const availableMeals = mealsAvailable();
-    selectedMeal = availableMeals.includes('lunch') ? 'lunch' : (availableMeals.includes('dinner') ? 'dinner' : availableMeals[0]);
-    renderMealButtons(availableMeals);
+    const res = await fetch(API);
+    if(!res.ok) throw new Error('API error ' + res.status);
+    const json = await res.json();
+    halls = json.halls || [];
+    hallBySlug = {};
+    halls.forEach(h => hallBySlug[h.slug] = h);
+
+    renderHallSelect();
+    selectAllHalls();               // preserve behavior you said should not change
+    attachControls();
     renderTable();
-    attachFilterHandlers();
-  } catch(err){
+  } catch (err) {
     console.error(err);
-    document.getElementById('tableWrap').style.display='none';
-    document.getElementById('noResults').textContent = 'Error fetching menus (check backend).';
-    document.getElementById('noResults').style.display='block';
+    $('tableContainer').style.display='none';
+    $('noResults').style.display='block';
+    $('noResults').textContent = 'Error loading menus. Is backend running?';
   }
 }
 
-// returns unique list of meals present (breakfast/lunch/dinner) across halls/days
-function mealsAvailable(){
-  const set = new Set();
-  for(const hall of diningData){
-    const day = (hall.days && hall.days[0]) || null;
-    if(!day || !day.meals) continue;
-    Object.keys(day.meals).forEach(m => set.add(m));
-  }
-  return Array.from(set);
-}
+/* Render hall select (value=slug, label=name) */
+function renderHallSelect(){
+  const sel = $('hallSelect');
+  sel.innerHTML = '';
+  // Add an "All Halls" placeholder option for clarity (users can still multi-select)
+  const headerOpt = document.createElement('option');
+  headerOpt.value = 'ALL_HALLS';
+  headerOpt.textContent = '--- All Halls (or select specific halls) ---';
+  headerOpt.disabled = true;
+  sel.appendChild(headerOpt);
 
-// render meal selector (buttons)
-function renderMealButtons(meals){
-  const container = document.getElementById('mealButtons');
-  container.innerHTML = '';
-  meals.forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'btn ' + (m === selectedMeal ? 'active' : '');
-    btn.textContent = m.charAt(0).toUpperCase() + m.slice(1);
-    btn.dataset.meal = m;
-    btn.addEventListener('click', () => {
-      selectedMeal = m;
-      document.querySelectorAll('#mealButtons .btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderTable();
-    });
-    container.appendChild(btn);
+  halls.forEach(h => {
+    const opt = document.createElement('option');
+    opt.value = h.slug;
+    opt.textContent = h.name;
+    sel.appendChild(opt);
   });
-}
 
-// attach filter button listeners
-function attachFilterHandlers(){
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tag = btn.dataset.filter;
-      if(activeFilters.has(tag)){ activeFilters.delete(tag); btn.classList.remove('active'); }
-      else { activeFilters.add(tag); btn.classList.add('active'); }
-      renderTable();
-    });
-  });
-  document.getElementById('clearFilters').addEventListener('click', () => {
-    activeFilters.clear();
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  // ensure change handler updates selectedSlugs
+  sel.addEventListener('change', () => {
+    selectedSlugs = Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== 'ALL_HALLS');
+    // if user deselects all, treat as "all halls"
+    if(selectedSlugs.length === 0) selectAllHalls();
     renderTable();
   });
 }
 
-// Heuristic: determine whether a dish matches all active filters
-function dishMatchesFilters(dish){
-  if(activeFilters.size === 0) return true; // no filter -> show
-  const normalizedTags = (dish.dietTags || []).map(t => normalizeTag(t));
-  const name = normalizeTag(dish.name || '');
-  // For each active filter, check tag presence OR name keyword
-  for(const f of activeFilters){
-    // check explicit dietTags first
-    if(normalizedTags.includes(f)) continue;
-    // check keywords mapping
-    const keywords = tagKeywords[f] || [];
-    const nameMatches = keywords.some(kw => name.includes(kw));
-    if(nameMatches) continue;
-    // otherwise this dish fails this filter
+/* select all helper (keeps existing UI behavior) */
+function selectAllHalls(){
+  const sel = $('hallSelect');
+  Array.from(sel.options).forEach(opt => opt.selected = (opt.value !== 'ALL_HALLS'));
+  selectedSlugs = halls.map(h => h.slug);
+  renderTable();
+}
+
+/* attach other control handlers */
+function attachControls(){
+  $('selectAllBtn').addEventListener('click', () => {
+    selectAllHalls();
+  });
+
+  $('mealSelect').addEventListener('change', e => {
+    selectedMeal = e.target.value;
+    renderTable();
+  });
+
+  document.querySelectorAll('.diet-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const d = b.dataset.diet;
+      if(activeDiets.has(d)){
+        activeDiets.delete(d);
+        b.classList.remove('active');
+      } else {
+        activeDiets.add(d);
+        b.classList.add('active');
+      }
+      renderTable();
+    });
+  });
+
+  $('clearFilters').addEventListener('click', () => {
+    activeDiets.clear();
+    document.querySelectorAll('.diet-btn').forEach(b => b.classList.remove('active'));
+    selectAllHalls();
+    $('mealSelect').value = 'lunch';
+    selectedMeal = 'lunch';
+    renderTable();
+  });
+}
+
+/* Determine whether a dish matches the active diets.
+   - Prefer explicit dish.dietTags if present
+   - Otherwise fall back to name / station / allergens keyword check
+*/
+function dishMatchesDiets(dish){
+  if(activeDiets.size === 0) return true; // no filter -> everything allowed
+
+  const tags = (dish.dietTags || []).map(t => normalize(t));
+  const name = normalize(dish.name || '');
+  const station = normalize(dish.station || '');
+  const allergens = (dish.allergens || []).map(a => normalize(a)).join(' ');
+
+  for(const diet of activeDiets){
+    // check explicit tag
+    if(tags.includes(diet)) continue;
+
+    // check allergens if it explicitly says "contains gluten" etc. (conservative)
+    if(allergens.includes(diet)) continue;
+
+    // check name/station keywords
+    const kws = dietKeywords[diet] || [];
+    const matchByKeyword = kws.some(kw => name.includes(kw) || station.includes(kw));
+    if(matchByKeyword) continue;
+
+    // if none matched, dish does NOT satisfy this diet
     return false;
   }
+  // passed all active diets
   return true;
 }
 
-// Build and render the side-by-side table for selectedMeal
+/* Render table with ONLY hall columns (no 'Dish' first column).
+   Each cell contains a vertical list of dishes for that hall that match filters.
+*/
 function renderTable(){
-  const headerRow = document.getElementById('headerRow');
-  const body = document.getElementById('bodyRows');
-  headerRow.innerHTML = '';
-  body.innerHTML = '';
+  const container = $('tableContainer');
+  const headerRow = $('headerRow');
+  const bodyRows = $('bodyRows');
 
-  if(!selectedMeal){
-    headerRow.innerHTML = '<th>Dish</th><th>No meal selected</th>';
+  headerRow.innerHTML = '';
+  bodyRows.innerHTML = '';
+
+  // Determine halls to show (if none selected, show all)
+  const showSlugs = selectedSlugs.length ? selectedSlugs : halls.map(h => h.slug);
+  const showHalls = showSlugs.map(s => hallBySlug[s]).filter(Boolean);
+
+  if(showHalls.length === 0){
+    container.style.display = 'none';
+    $('noResults').style.display = 'block';
+    $('noResults').textContent = 'No halls selected.';
     return;
   }
 
-  // Header: Dish + each hall name
-  const firstTh = document.createElement('th'); firstTh.textContent = 'Dish'; headerRow.appendChild(firstTh);
-  diningData.forEach(hall => {
+  // Build header: just hall names (no dish column)
+  showHalls.forEach(h => {
     const th = document.createElement('th');
-    th.textContent = hall.name;
+    th.textContent = h.name;
     headerRow.appendChild(th);
   });
 
-  // Build per-hall meal lists (cleaned)
-  const hallMealLists = diningData.map(hall => {
-    const day = (hall.days && hall.days[0]) || {};
-    const meals = day.meals || {};
-    const list = Array.isArray(meals[selectedMeal]) ? meals[selectedMeal] : [];
-    // filter unknown items and trim names
-    return list
+  // For simplicity show a single-row table where each column contains the list for that hall.
+  // Create one row only.
+  const tr = document.createElement('tr');
+
+  // For each hall, build a UL of filtered dishes (selectedMeal)
+  let anyMatchesOverall = false;
+
+  showHalls.forEach(h => {
+    const td = document.createElement('td');
+    const day = (h.days && h.days[0]) || {};
+    const mealList = (day.meals && day.meals[selectedMeal]) || [];
+
+    // Filter unknown names, trim
+    const cleaned = mealList
       .filter(d => d && d.name && !/^unknown/i.test(d.name))
-      .map(d => ({ name: d.name.trim(), dietTags: (d.dietTags||[]).map(t => normalizeTag(t)), raw: d }));
-  });
+      .map(d => ({
+        name: (d.name || '').trim(),
+        dietTags: d.dietTags || [],
+        station: d.station || '',
+        allergens: d.allergens || [],
+        raw: d
+      }));
 
-  // Collect unique dish names across all halls for the selectedMeal
-  const allNames = new Set();
-  hallMealLists.forEach(list => list.forEach(d => allNames.add(d.name)));
-  const uniqueDishNames = Array.from(allNames).sort((a,b)=>a.localeCompare(b));
+    // Apply diet filter to each dish for this hall
+    const matches = cleaned.filter(d => dishMatchesDiets(d.raw));
 
-  // For each dish name, determine if any hall has a dish that MATCHES ALL active filters.
-  // Only include rows where at least one hall has a matching dish.
-  const rowsToShow = uniqueDishNames.filter(dishName => {
-    // check across halls
-    for(const list of hallMealLists){
-      const d = list.find(x=>x.name===dishName);
-      if(!d) continue;
-      if(dishMatchesFilters(d.raw)) return true;
+    if(matches.length > 0) anyMatchesOverall = true;
+
+    // Build UI: show matches. If none, show a hyphen or "(no matching dishes)"
+    if(matches.length === 0){
+      td.innerHTML = '<div style="color:#6b7280;font-style:italic">No matching dishes</div>';
+    } else {
+      const ul = document.createElement('ul');
+      ul.className = 'dish-list';
+      matches.forEach(m => {
+        const li = document.createElement('li');
+        // include tags if present
+        const tagText = (m.dietTags || []).filter(Boolean).join(', ');
+        li.innerHTML = `<div>${m.name}</div>${tagText ? `<div class="tags">${tagText}</div>` : ''}`;
+        ul.appendChild(li);
+      });
+      td.appendChild(ul);
     }
-    return false;
+    tr.appendChild(td);
   });
 
-  // If no rowsToShow then show friendly message
-  if(rowsToShow.length === 0){
-    document.getElementById('tableWrap').style.display='none';
-    document.getElementById('noResults').style.display='block';
-    return;
+  bodyRows.appendChild(tr);
+
+  // Show or hide containers depending on whether any hall had matches
+  if(!anyMatchesOverall){
+    container.style.display = 'none';
+    $('noResults').style.display = 'block';
+    $('noResults').textContent = 'No dishes match your filters across selected halls.';
   } else {
-    document.getElementById('tableWrap').style.display='';
-    document.getElementById('noResults').style.display='none';
-  }
-
-  // Build table rows
-  for(const dishName of rowsToShow){
-    const tr = document.createElement('tr');
-    // Dish name cell
-    const nameTd = document.createElement('td');
-    nameTd.className = 'dish-name';
-    nameTd.textContent = dishName;
-    tr.appendChild(nameTd);
-
-    // For each hall, display the dish if present and (if present) whether it matches filters (or empty)
-    for(const list of hallMealLists){
-      const td = document.createElement('td');
-      const d = list.find(x=>x.name===dishName);
-      if(!d){
-        td.textContent = '';
-      } else {
-        // show name (and tags if present)
-        const tagsText = (d.dietTags && d.dietTags.length) ? d.dietTags.join(', ') : '';
-        td.innerHTML = `<div>${d.name}</div>${tagsText ? `<div class="tags">${tagsText}</div>` : ''}`;
-        // If the dish does NOT match active filters, dim it to indicate it's not a match
-        if(!dishMatchesFilters(d.raw)){
-          td.style.opacity = '0.45';
-        } else {
-          td.style.opacity = '';
-        }
-      }
-      tr.appendChild(td);
-    }
-    body.appendChild(tr);
+    container.style.display = '';
+    $('noResults').style.display = 'none';
   }
 }
 
-// kick off
+/* Start */
 init();
 </script>
 </body>
 </html>
-
-
-
