@@ -1,10 +1,9 @@
 const express = require('express');
-const { getMenu } = require('../services/nutrislice');
+const db = require('../db/connection');
 
 const router = express.Router();
 
-// Yale residential college dining halls & their Nutrislice slugs
-// (from yaledining.nutrislice.com URLs)
+// Yale residential college dining halls (matching database)
 const LOCATIONS = [
   { slug: 'benjamin-franklin-college', name: 'Benjamin Franklin' },
   { slug: 'berkeley-college',          name: 'Berkeley' },
@@ -24,83 +23,90 @@ const LOCATIONS = [
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
 
-
+/**
+ * GET /api/dining/
+ */
 router.get('/', (req, res) => {
-    res.json({ message: 'Dining API root' });
-  });
-  
-  /**
-   * GET /api/dining/all?days=7
-   */
-  router.get('/all', async (req, res) => {
-    const days = Number.parseInt(req.query.days, 10) || 7;
-    const dates = getNextNDates(days);
-  
-    try {
-      const halls = await Promise.all(
-        LOCATIONS.map((hall) => buildHallSchedule(hall, dates))
-      );
-  
-      res.json({ halls });
-    } catch (err) {
-      console.error(err?.response?.data || err.message);
-      res.status(500).json({ error: 'Failed to fetch dining data for all halls' });
-    }
-  });
-  
-  /**
-   * GET /api/dining/:locationSlug?date=YYYY-MM-DD
-   */
-  router.get('/:locationSlug', async (req, res) => {
-    try {
-      const { locationSlug } = req.params;
-      const date = req.query.date;
-  
-      if (!date) {
-        return res
-          .status(400)
-          .json({ error: "Missing 'date' query param. Use ?date=YYYY-MM-DD" });
-      }
-  
-      const hallMeta =
-        LOCATIONS.find((h) => h.slug === locationSlug) || {
-          slug: locationSlug,
-          name: toTitleCase(locationSlug.replace(/-/g, ' ')),
-        };
-  
-      const day = await buildDayMeals(locationSlug, date);
-  
-      return res.json({
-        diningHall: {
-          slug: hallMeta.slug,
-          name: hallMeta.name,
-        },
-        days: [day],
-      });
-    } catch (err) {
-      console.error(err?.response?.data || err.message);
-      if (err.response && err.response.status === 404) {
-        return res
-          .status(404)
-          .json({ error: 'Menu not found for that hall/date' });
-      }
+  res.json({ message: 'Dining API root (database-backed)' });
+});
+
+/**
+ * GET /api/dining/all?days=7
+ * Fetch all dining halls with menus for the next N days
+ */
+router.get('/all', async (req, res) => {
+  const days = Number.parseInt(req.query.days, 10) || 7;
+  const dates = getNextNDates(days);
+
+  try {
+    const halls = await Promise.all(
+      LOCATIONS.map((hall) => buildHallScheduleFromDB(hall, dates))
+    );
+
+    res.json({ halls });
+  } catch (err) {
+    console.error('Error fetching all dining data:', err.message);
+    res.status(500).json({ error: 'Failed to fetch dining data for all halls' });
+  }
+});
+
+/**
+ * GET /api/dining/:locationSlug?date=YYYY-MM-DD
+ * Fetch menu for a specific hall and date
+ */
+router.get('/:locationSlug', async (req, res) => {
+  try {
+    const { locationSlug } = req.params;
+    const date = req.query.date;
+
+    if (!date) {
       return res
-        .status(500)
-        .json({ error: 'Failed to fetch or process menu data' });
+        .status(400)
+        .json({ error: "Missing 'date' query param. Use ?date=YYYY-MM-DD" });
     }
-  });
-  
+
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    const hallMeta =
+      LOCATIONS.find((h) => h.slug === locationSlug) || {
+        slug: locationSlug,
+        name: toTitleCase(locationSlug.replace(/-/g, ' ')),
+      };
+
+    const day = await buildDayMealsFromDB(locationSlug, date);
+
+    return res.json({
+      diningHall: {
+        slug: hallMeta.slug,
+        name: hallMeta.name,
+      },
+      days: [day],
+    });
+  } catch (err) {
+    console.error('Error fetching menu:', err.message);
+    return res
+      .status(500)
+      .json({ error: 'Failed to fetch menu data from database' });
+  }
+});
 
 //
-// Helpers
+// Database Query Helpers
 //
 
-// Build schedule for a hall over multiple dates
-async function buildHallSchedule(hall, dates) {
+/**
+ * Build schedule for a hall over multiple dates from database
+ */
+async function buildHallScheduleFromDB(hall, dates) {
   const days = [];
 
   for (const date of dates) {
-    const day = await buildDayMeals(hall.slug, date);
+    const day = await buildDayMealsFromDB(hall.slug, date);
     days.push(day);
   }
 
@@ -111,29 +117,37 @@ async function buildHallSchedule(hall, dates) {
   };
 }
 
-// Build meals (breakfast/lunch/dinner) for one hall on one date
-async function buildDayMeals(locationSlug, date) {
-  const results = await Promise.allSettled(
-    MEAL_TYPES.map((mealType) =>
-      getMenu({ locationSlug, menuType: mealType, date })
-    )
-  );
-
+/**
+ * Build meals (breakfast/lunch/dinner) for one hall on one date from database
+ */
+async function buildDayMealsFromDB(locationSlug, date) {
   const meals = {
     breakfast: [],
     lunch: [],
     dinner: [],
   };
 
-  results.forEach((result, index) => {
-    const mealType = MEAL_TYPES[index];
+  // Get hall ID from slug
+  const hallQuery = `
+    SELECT id, name 
+    FROM dining_halls 
+    WHERE slug = ?
+  `;
+  
+  const hallRows = await db.query(hallQuery, [locationSlug]);
+  
+  if (!hallRows || hallRows.length === 0) {
+    // Hall not found, return empty meals
+    return { date, meals };
+  }
 
-    if (result.status === 'fulfilled') {
-      meals[mealType] = normalizeMeal(result.value, date);
-    } else {
-      meals[mealType] = [];
-    }
-  });
+  const hallId = hallRows[0].id;
+
+  // Get all meals for this hall and date
+  for (const mealType of MEAL_TYPES) {
+    const menuItems = await getMenuItemsFromDB(hallId, date, mealType);
+    meals[mealType] = menuItems;
+  }
 
   return {
     date,
@@ -141,37 +155,41 @@ async function buildDayMeals(locationSlug, date) {
   };
 }
 
-// Choose the correct day inside Nutrislice week data and flatten items
-function normalizeMeal(nutrisliceData, targetDate) {
-  if (!nutrisliceData || !Array.isArray(nutrisliceData.days)) return [];
+/**
+ * Get menu items from database for a specific hall, date, and meal type
+ */
+async function getMenuItemsFromDB(hallId, date, mealType) {
+  const query = `
+    SELECT 
+      mi.item_name,
+      mi.station,
+      GROUP_CONCAT(DISTINCT dt.tag_name) as dietary_tags,
+      GROUP_CONCAT(DISTINCT a.allergen_name) as allergens
+    FROM menu_items mi
+    LEFT JOIN menu_item_dietary_tags midt ON mi.id = midt.menu_item_id
+    LEFT JOIN dietary_tags dt ON midt.dietary_tag_id = dt.id
+    LEFT JOIN menu_item_allergens mia ON mi.id = mia.menu_item_id
+    LEFT JOIN allergens a ON mia.allergen_id = a.id
+    WHERE mi.hall_id = ?
+      AND mi.date = ?
+      AND mi.meal_type = ?
+    GROUP BY mi.id, mi.item_name, mi.station
+    ORDER BY mi.station, mi.item_name
+  `;
 
-  // Try to find the day matching the target date
-  let day =
-    nutrisliceData.days.find(
-      (d) =>
-        d.date === targetDate ||
-        d.dateStr === targetDate ||
-        d.fulldate === targetDate
-    ) || nutrisliceData.days[0];
+  const rows = await db.query(query, [hallId, date, mealType]);
 
-  if (!day || !Array.isArray(day.menu_items)) return [];
-
-  return day.menu_items.map((item) => {
-    const food = item.food || {};
-    return {
-      name: food.name || item.name || 'Unknown item',
-      station: item.station || '',
-      dietTags:
-        item.food_dietary_preference_names ||
-        item.dietary_preferences ||
-        [],
-      allergens:
-        item.food_allergen_names ||
-        item.allergens ||
-        [],
-    };
-  });
+  return rows.map((row) => ({
+    name: row.item_name,
+    station: row.station || '',
+    dietTags: row.dietary_tags ? row.dietary_tags.split(',') : [],
+    allergens: row.allergens ? row.allergens.split(',') : [],
+  }));
 }
+
+//
+// Utility Functions
+//
 
 function getNextNDates(n) {
   const dates = [];

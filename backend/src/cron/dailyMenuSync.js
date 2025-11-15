@@ -262,9 +262,9 @@
          'SELECT id FROM dining_halls WHERE slug = ?',
          [hall.slug]
        );
-       console.log('hallRows',hallRows)
-       console.log('hallRows length',hallRows.length)
-       console.log('hallRows slug',hallRows.slug)
+       //console.log('hallRows',hallRows)
+       //console.log('hallRows length',hallRows.length)
+       //console.log('hallRows slug',hallRows.slug)
        if (hallRows.length === 0) {
          console.log(`  ⚠️  Hall not found in database: ${hall.slug}\n`);
          continue;
