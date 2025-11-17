@@ -4,40 +4,458 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Yale Dining — Compare Menus</title>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  
+  // Initialize GA with your measurement ID
+  gtag('config', 'GA_MEASUREMENT_ID', {
+    page_title: 'Yale Dining Menu Comparison',
+    page_location: window.location.href
+  });
+</script>
+
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#f7f9fb;color:#0f172a}
-  header{background:#00356b;color:#fff;padding:1rem;text-align:center}
-  main{max-width:1100px;margin:1.5rem auto;padding:0 1rem}
-  .controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:center;margin-bottom:1rem}
+  
+  header{
+    background:#00356b;
+    color:#fff;
+    padding:1.5rem 1rem;
+    text-align:center;
+    position:relative;
+  }
+  .yale-logo{
+    width:60px;
+    height:60px;
+    margin:0 auto .5rem;
+  }
+  header h1{
+    margin:.5rem 0 .25rem;
+    font-size:2rem;
+  }
+  
+  main{max-width:1400px;margin:1.5rem auto;padding:0 1rem}
+  
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.75rem;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:1rem;
+    background:#fff;
+    padding:1rem;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(2,6,23,.06);
+  }
+  
   select,button,input{padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:1rem}
-  button{cursor:pointer;background:#fff}
+  button{cursor:pointer;background:#fff;transition:all .2s}
+  button:hover{background:#f3f4f6}
   button.active{background:#00356b;color:#fff;border-color:#00356b}
+  button.active:hover{background:#00254d}
   .btn-danger{background:#ef4444;color:#fff;border:none}
-  .table-wrap{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.06);overflow:auto}
+  .btn-danger:hover{background:#dc2626}
+  
+  /* Dropdown for halls */
+  .dropdown-container{position:relative;display:inline-block}
+  .dropdown-button{
+    min-width:220px;
+    text-align:left;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .dropdown-button::after{
+    content:'▼';
+    font-size:.7em;
+    margin-left:.5rem;
+  }
+  .dropdown-menu{
+    display:none;
+    position:absolute;
+    top:100%;
+    left:0;
+    background:#fff;
+    border:1px solid #d1d5db;
+    border-radius:.5rem;
+    box-shadow:0 10px 25px rgba(0,0,0,.1);
+    min-width:280px;
+    max-height:400px;
+    overflow-y:auto;
+    z-index:1000;
+    margin-top:.25rem;
+  }
+  .dropdown-menu.show{display:block}
+  .dropdown-item{
+    padding:.75rem 1rem;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    border-bottom:1px solid #f3f4f6;
+  }
+  .dropdown-item:last-child{border-bottom:none}
+  .dropdown-item:hover{background:#f9fafb}
+  .dropdown-item input[type="checkbox"]{
+    cursor:pointer;
+    width:18px;
+    height:18px;
+  }
+  .dropdown-divider{
+    height:1px;
+    background:#e5e7eb;
+    margin:.25rem 0;
+  }
+  .dropdown-header{
+    padding:.5rem 1rem;
+    font-size:.85rem;
+    color:#6b7280;
+    font-weight:600;
+    display:flex;
+    justify-content:space-between;
+  }
+  .dropdown-header button{
+    font-size:.75rem;
+    padding:.25rem .5rem;
+  }
+  
+  .section-header{
+    background:#00356b;
+    color:#fff;
+    padding:.75rem 1rem;
+    border-radius:8px 8px 0 0;
+    margin-top:1.5rem;
+    font-size:1.1rem;
+    font-weight:600;
+  }
+  .section-subtitle{
+    background:#f0f4f8;
+    padding:.5rem 1rem;
+    border-left:4px solid #00356b;
+    margin-bottom:.5rem;
+    font-size:.9rem;
+    color:#475569;
+  }
+  
+  .table-wrap{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,.06);overflow:auto;margin-bottom:2rem}
   table{width:100%;min-width:700px;border-collapse:collapse}
   th,td{padding:.75rem 1rem;border:1px solid #e6eef6;text-align:left;vertical-align:top}
-  th{background:#00356b;color:#fff;position:sticky;top:0}
+  
+  /* College shield headers */
+  th{
+    background:#00356b;
+    color:#fff;
+    position:sticky;
+    top:0;
+    text-align:center;
+  }
+  .college-header{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:.5rem;
+  }
+  .college-shield{
+    width:48px;
+    height:48px;
+    background:#fff;
+    border-radius:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:1.5rem;
+    color:#00356b;
+    border:2px solid #fff;
+  }
+  .college-name{
+    font-size:.9rem;
+    font-weight:600;
+  }
+  
   tr:nth-child(even){background:#fbfdff}
   .empty{text-align:center;color:#6b7280;padding:1rem}
   ul.dish-list{list-style:none;margin:0;padding:0}
   ul.dish-list li{padding:.35rem 0;border-bottom:1px dashed #eee}
-  .tags{font-size:.85rem;color:#6b7280;margin-top:.25rem}
-  @media(max-width:600px){table{display:block;overflow-x:auto;white-space:nowrap}}
+  ul.dish-list li:last-child{border-bottom:none}
+  
+  /* Meat dish styling */
+  ul.dish-list li.meat-dish{
+    background:#fef3c7;
+    padding:.5rem;
+    border-radius:4px;
+    margin-bottom:.25rem;
+  }
+  
+  /* Clickable dish name */
+  .dish-name{
+    cursor:pointer;
+    color:#00356b;
+    font-weight:500;
+    transition:all .2s;
+  }
+  .dish-name:hover{
+    color:#0066cc;
+    text-decoration:underline;
+  }
+  
+  /* Modal styles */
+  .modal-overlay{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(0,0,0,0.6);
+    z-index:9998;
+    animation:fadeIn 0.2s;
+  }
+  .modal-overlay.show{
+    display:block;
+  }
+  
+  .modal{
+    display:none;
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    max-width:600px;
+    width:90%;
+    max-height:80vh;
+    overflow-y:auto;
+    z-index:9999;
+    animation:slideIn 0.3s;
+  }
+  .modal.show{
+    display:block;
+  }
+  
+  @keyframes fadeIn{
+    from{opacity:0}
+    to{opacity:1}
+  }
+  
+  @keyframes slideIn{
+    from{
+      transform:translate(-50%, -60%);
+      opacity:0;
+    }
+    to{
+      transform:translate(-50%, -50%);
+      opacity:1;
+    }
+  }
+  
+  .modal-header{
+    background:#00356b;
+    color:#fff;
+    padding:1.5rem;
+    border-radius:12px 12px 0 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .modal-title{
+    font-size:1.5rem;
+    font-weight:600;
+    margin:0;
+  }
+  .modal-close{
+    background:transparent;
+    border:none;
+    color:#fff;
+    font-size:2rem;
+    cursor:pointer;
+    padding:0;
+    width:32px;
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:4px;
+    transition:background .2s;
+  }
+  .modal-close:hover{
+    background:rgba(255,255,255,0.2);
+  }
+  
+  .modal-body{
+    padding:1.5rem;
+  }
+  
+  .modal-section{
+    margin-bottom:1.5rem;
+  }
+  .modal-section:last-child{
+    margin-bottom:0;
+  }
+  .modal-section-title{
+    font-weight:600;
+    font-size:1rem;
+    color:#00356b;
+    margin-bottom:.5rem;
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+  }
+  .modal-section-content{
+    color:#475569;
+    line-height:1.6;
+  }
+  
+  .modal-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.5rem;
+    margin-top:.5rem;
+  }
+  .modal-tag{
+    display:inline-flex;
+    align-items:center;
+    gap:.25rem;
+    padding:.35rem .75rem;
+    background:#f0f9ff;
+    border:1px solid #bae6fd;
+    border-radius:999px;
+    font-size:.875rem;
+    color:#0369a1;
+  }
+  .modal-tag.allergen{
+    background:#fef2f2;
+    border-color:#fecaca;
+    color:#991b1b;
+  }
+  
+  .modal-info-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:1rem;
+    margin-top:.75rem;
+  }
+  .modal-info-item{
+    text-align:center;
+    padding:.75rem;
+    background:#f9fafb;
+    border-radius:8px;
+  }
+  .modal-info-label{
+    font-size:.75rem;
+    color:#6b7280;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+  }
+  .modal-info-value{
+    font-size:1.25rem;
+    font-weight:600;
+    color:#00356b;
+    margin-top:.25rem;
+  }
+  
+  /* Icon styles */
+  .icon-container{
+    display:inline-flex;
+    gap:.25rem;
+    margin-top:.25rem;
+    flex-wrap:wrap;
+  }
+  .diet-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    font-size:14px;
+    cursor:help;
+    position:relative;
+  }
+  
+  /* Dietary tag icon colors */
+  .icon-vegan{background:#22c55e;color:#fff}
+  .icon-vegetarian{background:#84cc16;color:#fff}
+  .icon-gluten-free,.icon-gluten{background:#f59e0b;color:#fff}
+  .icon-halal{background:#8b5cf6;color:#fff}
+  .icon-kosher{background:#3b82f6;color:#fff}
+  .icon-alcohol{background:#ef4444;color:#fff}
+  .icon-dairy{background:#fbbf24;color:#fff}
+  .icon-default{background:#6b7280;color:#fff}
+  
+  /* Allergen icon colors */
+  .icon-allergen{background:#fecaca;color:#991b1b;border:1px solid #fca5a5}
+  
+  /* Tooltip */
+  .diet-icon:hover::after{
+    content:attr(data-tooltip);
+    position:absolute;
+    bottom:100%;
+    left:50%;
+    transform:translateX(-50%);
+    padding:.35rem .6rem;
+    background:#1f2937;
+    color:#fff;
+    border-radius:.375rem;
+    font-size:.75rem;
+    white-space:nowrap;
+    z-index:1000;
+    margin-bottom:.25rem;
+    box-shadow:0 4px 6px -1px rgba(0,0,0,.1);
+  }
+  .diet-icon:hover::before{
+    content:'';
+    position:absolute;
+    bottom:100%;
+    left:50%;
+    transform:translateX(-50%);
+    border:5px solid transparent;
+    border-top-color:#1f2937;
+    z-index:1000;
+  }
+  
+  @media(max-width:600px){
+    table{display:block;overflow-x:auto;white-space:nowrap}
+    .college-shield{width:36px;height:36px;font-size:1.2rem}
+    .college-name{font-size:.8rem}
+    .modal{width:95%;max-height:90vh}
+    .modal-title{font-size:1.25rem}
+  }
 </style>
 </head>
 <body>
   <header>
-    <h1>Yale Dining — Compare Menus</h1>
-    <div style="opacity:.9;font-size:.95rem">Choose halls, meal, and dietary filters to compare menus side-by-side</div>
+    <svg class="yale-logo" viewBox="0 0 100 100" fill="white">
+      <text x="50" y="70" font-family="serif" font-size="60" font-weight="bold" text-anchor="middle">Y</text>
+    </svg>
+    <h1>Yale Dining</h1>
+    <div style="opacity:.9;font-size:.95rem">Compare menus across residential colleges • Click dish names for details</div>
+    <div id="currentDate" style="opacity:.85;font-size:.9rem;margin-top:.5rem;font-weight:500"></div>
   </header>
 
   <main>
     <div class="controls">
-      <label for="hallSelect">Dining Halls:</label>
-      <select id="hallSelect" multiple size="4" style="min-width:220px">
-        <option disabled>Loading halls...</option>
-      </select>
-      <button id="selectAllBtn">Select All</button>
+      <div class="dropdown-container">
+        <button class="dropdown-button" id="hallDropdownBtn">
+          <span id="hallDropdownText">Select Dining Halls</span>
+        </button>
+        <div class="dropdown-menu" id="hallDropdownMenu">
+          <div class="dropdown-header">
+            <span>Select Colleges</span>
+            <button id="selectAllDropdownBtn">All</button>
+          </div>
+          <div class="dropdown-divider"></div>
+          <div id="hallCheckboxes"></div>
+        </div>
+      </div>
 
       <label for="mealSelect">Meal:</label>
       <select id="mealSelect">
@@ -47,41 +465,158 @@
       </select>
 
       <div id="dietFilters" style="display:flex;gap:.5rem;align-items:center">
-        <button class="diet-btn" data-diet="vegan">Vegan</button>
-        <button class="diet-btn" data-diet="vegetarian">Vegetarian</button>
-        <button class="diet-btn" data-diet="gluten-free">Gluten-Free</button>
+        <button class="diet-btn" data-diet="vegan">🌱 Vegan</button>
+        <button class="diet-btn" data-diet="vegetarian">🥬 Vegetarian</button>
+        <button class="diet-btn" data-diet="gluten-free">🌾 Gluten-Free</button>
       </div>
 
-      <button id="clearFilters" class="btn-danger">Clear</button>
+      <button id="clearFilters" class="btn-danger">Clear All</button>
     </div>
 
-    <div id="tableContainer" class="table-wrap" style="display:none">
-      <table id="menuTable" aria-describedby="desc">
-        <thead><tr id="headerRow"></tr></thead>
-        <tbody id="bodyRows"></tbody>
-      </table>
+    <div id="uniqueSection" style="display:none">
+      <div class="section-header">
+        🌟 Today's Specials
+      </div>
+      <div class="section-subtitle">
+        These dishes are only available today (not served every day this week) • Meat dishes shown first
+      </div>
+      <div class="table-wrap">
+        <table id="uniqueTable">
+          <thead><tr id="uniqueHeaderRow"></tr></thead>
+          <tbody id="uniqueBodyRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="allSection" style="display:none">
+      <div class="section-header">
+        📋 Complete Menu (Today)
+      </div>
+      <div class="section-subtitle">
+        All dishes available today, including daily staples • Meat dishes shown first
+      </div>
+      <div class="table-wrap">
+        <table id="allTable">
+          <thead><tr id="allHeaderRow"></tr></thead>
+          <tbody id="allBodyRows"></tbody>
+        </table>
+      </div>
     </div>
 
     <div id="noResults" class="empty" style="display:none">No dishes match your filters.</div>
   </main>
 
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" id="modalOverlay"></div>
+  
+  <!-- Modal -->
+  <div class="modal" id="dishModal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Dish Details</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Content populated by JavaScript -->
+    </div>
+  </div>
+
 <script>
 /* CONFIG */
-const API = 'http://localhost:4000/api/dining/all?days=1';
+const API = 'http://localhost:4000/api/dining/all?days=7';
+const PREFS_KEY = 'yaleDiningPreferences';
+
+/* Google Analytics Event Tracking Helper */
+function trackEvent(category, action, label, value) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', action, {
+      event_category: category,
+      event_label: label,
+      value: value
+    });
+  }
+}
+
+/* Display current date */
+function displayCurrentDate() {
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const dateString = new Date().toLocaleDateString('en-US', options);
+  const dateElement = document.getElementById('currentDate');
+  if (dateElement) {
+    dateElement.textContent = dateString;
+  }
+}
+
+/* Meat keywords */
+const MEAT_KEYWORDS = [
+  'beef', 'steak', 'brisket', 'burger', 'meatball', 'meatloaf',
+  'chicken', 'turkey', 'duck', 'poultry',
+  'pork', 'bacon', 'ham', 'sausage', 'chorizo', 'salami', 'pepperoni',
+  'lamb', 'mutton', 'veal',
+  'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'trout', 'halibut', 'mahi',
+  'shrimp', 'lobster', 'crab', 'scallop', 'clam', 'mussel', 'oyster', 'seafood',
+  'prosciutto', 'pastrami', 'mortadella',
+  'venison', 'bison', 'buffalo',
+  'carnitas', 'carne', 'pollo',
+  'bbq', 'barbecue', 'grilled meat', 'roast meat'
+];
+
+/* College shields */
+const COLLEGE_SHIELDS = {
+  'benjamin-franklin-college': { letter: 'BF', color: '#00356b' },
+  'berkeley-college': { letter: 'BK', color: '#00356b' },
+  'branford-college': { letter: 'BR', color: '#00356b' },
+  'davenport-college': { letter: 'DC', color: '#00356b' },
+  'ezra-stiles-college': { letter: 'ES', color: '#00356b' },
+  'hopper-college': { letter: 'GH', color: '#00356b' },
+  'jonathan-edwards-college': { letter: 'JE', color: '#00356b' },
+  'morse-college': { letter: 'MC', color: '#00356b' },
+  'pauli-murray-college': { letter: 'PM', color: '#00356b' },
+  'pierson-college': { letter: 'PC', color: '#00356b' },
+  'saybrook-college': { letter: 'SY', color: '#00356b' },
+  'silliman-college': { letter: 'SM', color: '#00356b' },
+  'timothy-dwight-college': { letter: 'TD', color: '#00356b' },
+  'trumbull-college': { letter: 'TC', color: '#00356b' },
+};
+
+/* Icon mappings */
+const DIET_ICONS = {
+  'vegan': { emoji: '🌱', class: 'icon-vegan', tooltip: 'Vegan' },
+  'vegetarian': { emoji: '🥬', class: 'icon-vegetarian', tooltip: 'Vegetarian' },
+  'gluten free': { emoji: '🌾', class: 'icon-gluten-free', tooltip: 'Gluten Free' },
+  'gluten-free': { emoji: '🌾', class: 'icon-gluten-free', tooltip: 'Gluten Free' },
+  'halal': { emoji: '☪️', class: 'icon-halal', tooltip: 'Halal' },
+  'kosher': { emoji: '✡️', class: 'icon-kosher', tooltip: 'Kosher' },
+  'alcohol': { emoji: '🍷', class: 'icon-alcohol', tooltip: 'Contains Alcohol' },
+  'dairy': { emoji: '🥛', class: 'icon-dairy', tooltip: 'Contains Dairy' },
+};
+
+const ALLERGEN_ICONS = {
+  'dairy': { emoji: '🥛', tooltip: 'Dairy' },
+  'milk': { emoji: '🥛', tooltip: 'Milk' },
+  'eggs': { emoji: '🥚', tooltip: 'Eggs' },
+  'egg': { emoji: '🥚', tooltip: 'Eggs' },
+  'fish': { emoji: '🐟', tooltip: 'Fish' },
+  'shellfish': { emoji: '🦐', tooltip: 'Shellfish' },
+  'tree nuts': { emoji: '🌰', tooltip: 'Tree Nuts' },
+  'peanuts': { emoji: '🥜', tooltip: 'Peanuts' },
+  'peanut': { emoji: '🥜', tooltip: 'Peanuts' },
+  'wheat': { emoji: '🌾', tooltip: 'Wheat' },
+  'soybeans': { emoji: '🫘', tooltip: 'Soybeans' },
+  'soy': { emoji: '🫘', tooltip: 'Soy' },
+  'sesame': { emoji: '🌱', tooltip: 'Sesame' },
+};
 
 /* State */
-let halls = [];            // list of hall objects from API
-let hallBySlug = {};       // slug -> hall
-let selectedSlugs = [];    // selected halls (slugs)
+let halls = [];
+let hallBySlug = {};
+let selectedSlugs = [];
 let selectedMeal = 'lunch';
 let activeDiets = new Set();
 
-/* Heuristic keywords for diet matching (lowercase substrings) */
 const dietKeywords = {
   'vegan': ['vegan', 'tofu', 'tempeh', 'plant-based', 'vegan '],
   'vegetarian': ['vegetarian', 'veggie', 'egg', 'cheese', 'paneer', 'vegetable'],
   'gluten-free': ['gluten-free', 'gluten free', 'gf', 'gluten-free', 'gluten-free ']
-  // removed 'halal'
 };
 
 /* Helpers */
@@ -89,72 +624,327 @@ const $ = id => document.getElementById(id);
 
 function normalize(s){ return String(s || '').toLowerCase().trim(); }
 
+function isMeatDish(dishName) {
+  const normalized = normalize(dishName);
+  return MEAT_KEYWORDS.some(keyword => normalized.includes(keyword));
+}
+
+function sortDishes(dishes) {
+  return dishes.sort((a, b) => {
+    const aIsMeat = isMeatDish(a.name);
+    const bIsMeat = isMeatDish(b.name);
+    if (aIsMeat && !bIsMeat) return -1;
+    if (!aIsMeat && bIsMeat) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/* Modal Functions */
+function showDishModal(dish, hallName) {
+  const modal = $('dishModal');
+  const overlay = $('modalOverlay');
+  const title = $('modalTitle');
+  const body = $('modalBody');
+  
+  // Track dish click in Google Analytics
+  trackEvent('Dish Interaction', 'view_dish_details', dish.name, null);
+  
+  title.textContent = dish.name;
+  
+  let content = '';
+  
+  if (dish.station) {
+    content += `
+      <div class="modal-section">
+        <div class="modal-section-title">📍 Station</div>
+        <div class="modal-section-content">${dish.station}</div>
+      </div>
+    `;
+  }
+  
+  content += `
+    <div class="modal-section">
+      <div class="modal-section-title">🏛️ Available At</div>
+      <div class="modal-section-content">${hallName}</div>
+    </div>
+  `;
+  
+  if (dish.dietTags && dish.dietTags.length > 0) {
+    content += `
+      <div class="modal-section">
+        <div class="modal-section-title">🥗 Dietary Information</div>
+        <div class="modal-tags">
+          ${dish.dietTags.map(tag => {
+            const iconData = DIET_ICONS[normalize(tag)] || { emoji: '•' };
+            return `<span class="modal-tag">${iconData.emoji} ${tag}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  if (dish.allergens && dish.allergens.length > 0) {
+    content += `
+      <div class="modal-section">
+        <div class="modal-section-title">⚠️ Allergen Information</div>
+        <div class="modal-tags">
+          ${dish.allergens.map(allergen => {
+            const iconData = ALLERGEN_ICONS[normalize(allergen)] || { emoji: '⚠️' };
+            return `<span class="modal-tag allergen">${iconData.emoji} Contains ${allergen}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  content += `
+    <div class="modal-section">
+      <div class="modal-section-title">ℹ️ Additional Information</div>
+      <div class="modal-info-grid">
+        <div class="modal-info-item">
+          <div class="modal-info-label">Type</div>
+          <div class="modal-info-value">${isMeatDish(dish.name) ? '🥩 Meat' : '🥗 Other'}</div>
+        </div>
+        <div class="modal-info-item">
+          <div class="modal-info-label">Meal</div>
+          <div class="modal-info-value">${selectedMeal.charAt(0).toUpperCase() + selectedMeal.slice(1)}</div>
+        </div>
+        <div class="modal-info-item">
+          <div class="modal-info-label">Date</div>
+          <div class="modal-info-value">${new Date().toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  body.innerHTML = content;
+  
+  overlay.classList.add('show');
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDishModal() {
+  const modal = $('dishModal');
+  const overlay = $('modalOverlay');
+  
+  overlay.classList.remove('show');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+/* LocalStorage Functions */
+function savePreferences() {
+  const prefs = {
+    selectedSlugs,
+    selectedMeal,
+    activeDiets: Array.from(activeDiets),
+    lastUpdated: new Date().toISOString()
+  };
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+}
+
+function loadPreferences() {
+  try {
+    const saved = localStorage.getItem(PREFS_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch (e) {
+    console.error('Error loading preferences:', e);
+    return null;
+  }
+}
+
+function applyPreferences(prefs) {
+  if (!prefs) return;
+  
+  if (prefs.selectedSlugs && Array.isArray(prefs.selectedSlugs)) {
+    selectedSlugs = prefs.selectedSlugs.filter(slug => hallBySlug[slug]);
+  }
+  
+  if (prefs.selectedMeal) {
+    selectedMeal = prefs.selectedMeal;
+    $('mealSelect').value = selectedMeal;
+  }
+  
+  if (prefs.activeDiets && Array.isArray(prefs.activeDiets)) {
+    activeDiets = new Set(prefs.activeDiets);
+    document.querySelectorAll('.diet-btn').forEach(btn => {
+      if (activeDiets.has(btn.dataset.diet)) {
+        btn.classList.add('active');
+      }
+    });
+  }
+}
+
+/* Icon creation */
+function createDietIcon(tag) {
+  const normalized = normalize(tag);
+  const iconData = DIET_ICONS[normalized] || { emoji: '•', class: 'icon-default', tooltip: tag };
+  return `<span class="diet-icon ${iconData.class}" data-tooltip="${iconData.tooltip}">${iconData.emoji}</span>`;
+}
+
+function createAllergenIcon(allergen) {
+  const normalized = normalize(allergen);
+  const iconData = ALLERGEN_ICONS[normalized] || { emoji: '⚠️', tooltip: allergen };
+  return `<span class="diet-icon icon-allergen" data-tooltip="Contains ${iconData.tooltip}">${iconData.emoji}</span>`;
+}
+
+function createIconsHTML(dish) {
+  const icons = [];
+  
+  if (dish.dietTags && dish.dietTags.length > 0) {
+    dish.dietTags.forEach(tag => {
+      if (tag) icons.push(createDietIcon(tag));
+    });
+  }
+  
+  if (dish.allergens && dish.allergens.length > 0) {
+    dish.allergens.forEach(allergen => {
+      if (allergen) icons.push(createAllergenIcon(allergen));
+    });
+  }
+  
+  if (icons.length === 0) return '';
+  return `<div class="icon-container">${icons.join('')}</div>`;
+}
+
+/* Dropdown functions */
+function updateDropdownText() {
+  const count = selectedSlugs.length;
+  const text = count === 0 ? 'Select Dining Halls' :
+               count === halls.length ? 'All Colleges' :
+               count === 1 ? hallBySlug[selectedSlugs[0]]?.name :
+               `${count} Colleges Selected`;
+  $('hallDropdownText').textContent = text;
+}
+
+function toggleDropdown() {
+  $('hallDropdownMenu').classList.toggle('show');
+}
+
+function renderHallCheckboxes() {
+  const container = $('hallCheckboxes');
+  container.innerHTML = '';
+  
+  halls.forEach(hall => {
+    const div = document.createElement('div');
+    div.className = 'dropdown-item';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `hall-${hall.slug}`;
+    checkbox.value = hall.slug;
+    checkbox.checked = selectedSlugs.includes(hall.slug);
+    
+    checkbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (!selectedSlugs.includes(hall.slug)) {
+          selectedSlugs.push(hall.slug);
+        }
+        // Track hall selection in Google Analytics
+        trackEvent('User Interaction', 'select_dining_hall', hall.name, null);
+      } else {
+        selectedSlugs = selectedSlugs.filter(s => s !== hall.slug);
+        trackEvent('User Interaction', 'deselect_dining_hall', hall.name, null);
+      }
+      updateDropdownText();
+      savePreferences();
+      renderTables();
+    });
+    
+    const label = document.createElement('label');
+    label.htmlFor = `hall-${hall.slug}`;
+    label.textContent = hall.name;
+    label.style.cursor = 'pointer';
+    label.style.flex = '1';
+    
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    container.appendChild(div);
+  });
+}
+
+function selectAllHalls() {
+  selectedSlugs = halls.map(h => h.slug);
+  renderHallCheckboxes();
+  updateDropdownText();
+  savePreferences();
+  renderTables();
+  
+  // Track "Select All" button click
+  trackEvent('User Interaction', 'select_all_halls', 'Select All Button', halls.length);
+}
+
 /* Fetch & init */
 async function init(){
+  // Display current date immediately
+  displayCurrentDate();
+  
   try {
     const res = await fetch(API);
+
     if(!res.ok) throw new Error('API error ' + res.status);
     const json = await res.json();
+    console.log("json",json)
     halls = json.halls || [];
     hallBySlug = {};
     halls.forEach(h => hallBySlug[h.slug] = h);
 
-    renderHallSelect();
-    selectAllHalls();               // preserve behavior you said should not change
+    const prefs = loadPreferences();
+    
+    if (prefs && prefs.selectedSlugs && prefs.selectedSlugs.length > 0) {
+      applyPreferences(prefs);
+      // Track returning user
+      trackEvent('User Type', 'returning_user', 'Loaded Preferences', null);
+    } else {
+      selectAllHalls();
+      // Track new user
+      trackEvent('User Type', 'new_user', 'First Visit', null);
+    }
+    
+    renderHallCheckboxes();
+    updateDropdownText();
     attachControls();
-    renderTable();
+    renderTables();
   } catch (err) {
     console.error(err);
-    $('tableContainer').style.display='none';
+    $('uniqueSection').style.display='none';
+    $('allSection').style.display='none';
     $('noResults').style.display='block';
     $('noResults').textContent = 'Error loading menus. Is backend running?';
+    
+    // Track errors
+    trackEvent('Error', 'api_fetch_error', err.message, null);
   }
 }
 
-/* Render hall select (value=slug, label=name) */
-function renderHallSelect(){
-  const sel = $('hallSelect');
-  sel.innerHTML = '';
-  // Add an "All Halls" placeholder option for clarity (users can still multi-select)
-  const headerOpt = document.createElement('option');
-  headerOpt.value = 'ALL_HALLS';
-  headerOpt.textContent = '--- All Halls (or select specific halls) ---';
-  headerOpt.disabled = true;
-  sel.appendChild(headerOpt);
-
-  halls.forEach(h => {
-    const opt = document.createElement('option');
-    opt.value = h.slug;
-    opt.textContent = h.name;
-    sel.appendChild(opt);
-  });
-
-  // ensure change handler updates selectedSlugs
-  sel.addEventListener('change', () => {
-    selectedSlugs = Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== 'ALL_HALLS');
-    // if user deselects all, treat as "all halls"
-    if(selectedSlugs.length === 0) selectAllHalls();
-    renderTable();
-  });
-}
-
-/* select all helper (keeps existing UI behavior) */
-function selectAllHalls(){
-  const sel = $('hallSelect');
-  Array.from(sel.options).forEach(opt => opt.selected = (opt.value !== 'ALL_HALLS'));
-  selectedSlugs = halls.map(h => h.slug);
-  renderTable();
-}
-
-/* attach other control handlers */
+/* Control handlers */
 function attachControls(){
-  $('selectAllBtn').addEventListener('click', () => {
+  $('hallDropdownBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDropdown();
+    trackEvent('User Interaction', 'open_hall_dropdown', 'Dropdown Click', null);
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-container')) {
+      $('hallDropdownMenu').classList.remove('show');
+    }
+  });
+  
+  $('selectAllDropdownBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
     selectAllHalls();
   });
 
   $('mealSelect').addEventListener('change', e => {
     selectedMeal = e.target.value;
-    renderTable();
+    savePreferences();
+    renderTables();
+    
+    // Track meal selection
+    trackEvent('User Interaction', 'change_meal', selectedMeal, null);
   });
 
   document.querySelectorAll('.diet-btn').forEach(b => {
@@ -163,11 +953,14 @@ function attachControls(){
       if(activeDiets.has(d)){
         activeDiets.delete(d);
         b.classList.remove('active');
+        trackEvent('Filter', 'remove_diet_filter', d, null);
       } else {
         activeDiets.add(d);
         b.classList.add('active');
+        trackEvent('Filter', 'add_diet_filter', d, null);
       }
-      renderTable();
+      savePreferences();
+      renderTables();
     });
   });
 
@@ -177,16 +970,26 @@ function attachControls(){
     selectAllHalls();
     $('mealSelect').value = 'lunch';
     selectedMeal = 'lunch';
-    renderTable();
+    savePreferences();
+    renderTables();
+    
+    // Track clear all button
+    trackEvent('User Interaction', 'clear_all_filters', 'Clear All Button', null);
+  });
+  
+  $('modalClose').addEventListener('click', closeDishModal);
+  $('modalOverlay').addEventListener('click', closeDishModal);
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeDishModal();
+    }
   });
 }
 
-/* Determine whether a dish matches the active diets.
-   - Prefer explicit dish.dietTags if present
-   - Otherwise fall back to name / station / allergens keyword check
-*/
+/* Dish matching */
 function dishMatchesDiets(dish){
-  if(activeDiets.size === 0) return true; // no filter -> everything allowed
+  if(activeDiets.size === 0) return true;
 
   const tags = (dish.dietTags || []).map(t => normalize(t));
   const name = normalize(dish.name || '');
@@ -194,92 +997,168 @@ function dishMatchesDiets(dish){
   const allergens = (dish.allergens || []).map(a => normalize(a)).join(' ');
 
   for(const diet of activeDiets){
-    // check explicit tag
     if(tags.includes(diet)) continue;
-
-    // check allergens if it explicitly says "contains gluten" etc. (conservative)
     if(allergens.includes(diet)) continue;
-
-    // check name/station keywords
     const kws = dietKeywords[diet] || [];
     const matchByKeyword = kws.some(kw => name.includes(kw) || station.includes(kw));
     if(matchByKeyword) continue;
-
-    // if none matched, dish does NOT satisfy this diet
     return false;
   }
-  // passed all active diets
   return true;
 }
 
-/* Render table with ONLY hall columns (no 'Dish' first column).
-   Each cell contains a vertical list of dishes for that hall that match filters.
-*/
-function renderTable(){
-  const container = $('tableContainer');
-  const headerRow = $('headerRow');
-  const bodyRows = $('bodyRows');
+function removeDuplicates(dishes) {
+  const seen = new Set();
+  return dishes.filter(dish => {
+    const normalizedName = normalize(dish.name);
+    if (seen.has(normalizedName)) {
+      return false;
+    }
+    seen.add(normalizedName);
+    return true;
+  });
+}
 
-  headerRow.innerHTML = '';
-  bodyRows.innerHTML = '';
+/* Categorize dishes */
+function categorizeDishes(hallSlug, meal){
+  const hall = hallBySlug[hallSlug];
+  if(!hall || !hall.days || hall.days.length === 0) return { unique: [], all: [] };
 
-  // Determine halls to show (if none selected, show all)
+  const todayDay = hall.days[0] || {};
+  const todayMeal = (todayDay.meals && todayDay.meals[meal]) || [];
+  
+  const todayDishes = todayMeal
+    .filter(d => d && d.name && !/^unknown/i.test(d.name))
+    .map(d => ({
+      name: (d.name || '').trim(),
+      dietTags: d.dietTags || [],
+      station: d.station || '',
+      allergens: d.allergens || [],
+      raw: d
+    }));
+
+  const uniqueTodayDishes = removeDuplicates(todayDishes);
+
+  const dishCounts = new Map();
+  
+  hall.days.forEach(day => {
+    const mealList = (day.meals && day.meals[meal]) || [];
+    mealList.forEach(d => {
+      if(!d || !d.name || /^unknown/i.test(d.name)) return;
+      const dishName = normalize(d.name);
+      dishCounts.set(dishName, (dishCounts.get(dishName) || 0) + 1);
+    });
+  });
+
+  const unique = [];
+  const all = [];
+
+  uniqueTodayDishes.forEach(dish => {
+    const count = dishCounts.get(normalize(dish.name)) || 1;
+    all.push(dish);
+    if(count <= 2){
+      unique.push(dish);
+    }
+  });
+
+  const sortedUnique = sortDishes(unique);
+  const sortedAll = sortDishes(all);
+
+  return { unique: sortedUnique, all: sortedAll };
+}
+
+/* Render tables */
+function renderTables(){
   const showSlugs = selectedSlugs.length ? selectedSlugs : halls.map(h => h.slug);
   const showHalls = showSlugs.map(s => hallBySlug[s]).filter(Boolean);
 
   if(showHalls.length === 0){
-    container.style.display = 'none';
+    $('uniqueSection').style.display = 'none';
+    $('allSection').style.display = 'none';
     $('noResults').style.display = 'block';
     $('noResults').textContent = 'No halls selected.';
     return;
   }
 
-  // Build header: just hall names (no dish column)
-  showHalls.forEach(h => {
+  const uniqueData = showHalls.map(h => {
+    const { unique } = categorizeDishes(h.slug, selectedMeal);
+    return { hall: h, dishes: unique.filter(d => dishMatchesDiets(d.raw)) };
+  });
+
+  const allData = showHalls.map(h => {
+    const { all } = categorizeDishes(h.slug, selectedMeal);
+    return { hall: h, dishes: all.filter(d => dishMatchesDiets(d.raw)) };
+  });
+
+  renderTable('unique', uniqueData);
+  renderTable('all', allData);
+
+  const hasUniqueData = uniqueData.some(d => d.dishes.length > 0);
+  const hasAllData = allData.some(d => d.dishes.length > 0);
+
+  $('uniqueSection').style.display = hasUniqueData ? 'block' : 'none';
+  $('allSection').style.display = hasAllData ? 'block' : 'none';
+
+  if(!hasUniqueData && !hasAllData){
+    $('noResults').style.display = 'block';
+    $('noResults').textContent = 'No dishes match your filters.';
+  } else {
+    $('noResults').style.display = 'none';
+  }
+}
+
+/* Table renderer */
+function renderTable(tableId, hallData){
+  const headerRow = $(`${tableId}HeaderRow`);
+  const bodyRows = $(`${tableId}BodyRows`);
+
+  headerRow.innerHTML = '';
+  bodyRows.innerHTML = '';
+
+  hallData.forEach(({ hall }) => {
     const th = document.createElement('th');
-    th.textContent = h.name;
+    const shield = COLLEGE_SHIELDS[hall.slug] || { letter: '?', color: '#00356b' };
+    
+    th.innerHTML = `
+      <div class="college-header">
+        <div class="college-shield" style="color:${shield.color}">${shield.letter}</div>
+        <div class="college-name">${hall.name}</div>
+      </div>
+    `;
     headerRow.appendChild(th);
   });
 
-  // For simplicity show a single-row table where each column contains the list for that hall.
-  // Create one row only.
   const tr = document.createElement('tr');
 
-  // For each hall, build a UL of filtered dishes (selectedMeal)
-  let anyMatchesOverall = false;
-
-  showHalls.forEach(h => {
+  hallData.forEach(({ hall, dishes }) => {
     const td = document.createElement('td');
-    const day = (h.days && h.days[0]) || {};
-    const mealList = (day.meals && day.meals[selectedMeal]) || [];
 
-    // Filter unknown names, trim
-    const cleaned = mealList
-      .filter(d => d && d.name && !/^unknown/i.test(d.name))
-      .map(d => ({
-        name: (d.name || '').trim(),
-        dietTags: d.dietTags || [],
-        station: d.station || '',
-        allergens: d.allergens || [],
-        raw: d
-      }));
-
-    // Apply diet filter to each dish for this hall
-    const matches = cleaned.filter(d => dishMatchesDiets(d.raw));
-
-    if(matches.length > 0) anyMatchesOverall = true;
-
-    // Build UI: show matches. If none, show a hyphen or "(no matching dishes)"
-    if(matches.length === 0){
+    if(dishes.length === 0){
       td.innerHTML = '<div style="color:#6b7280;font-style:italic">No matching dishes</div>';
     } else {
       const ul = document.createElement('ul');
       ul.className = 'dish-list';
-      matches.forEach(m => {
+      dishes.forEach(dish => {
         const li = document.createElement('li');
-        // include tags if present
-        const tagText = (m.dietTags || []).filter(Boolean).join(', ');
-        li.innerHTML = `<div>${m.name}</div>${tagText ? `<div class="tags">${tagText}</div>` : ''}`;
+        
+        if (isMeatDish(dish.name)) {
+          li.classList.add('meat-dish');
+        }
+        
+        const iconsHTML = createIconsHTML(dish);
+        
+        const dishNameSpan = document.createElement('span');
+        dishNameSpan.className = 'dish-name';
+        dishNameSpan.textContent = dish.name;
+        dishNameSpan.addEventListener('click', () => showDishModal(dish, hall.name));
+        
+        li.appendChild(dishNameSpan);
+        if (iconsHTML) {
+          const iconsDiv = document.createElement('div');
+          iconsDiv.innerHTML = iconsHTML;
+          li.appendChild(iconsDiv.firstChild);
+        }
+        
         ul.appendChild(li);
       });
       td.appendChild(ul);
@@ -288,16 +1167,6 @@ function renderTable(){
   });
 
   bodyRows.appendChild(tr);
-
-  // Show or hide containers depending on whether any hall had matches
-  if(!anyMatchesOverall){
-    container.style.display = 'none';
-    $('noResults').style.display = 'block';
-    $('noResults').textContent = 'No dishes match your filters across selected halls.';
-  } else {
-    container.style.display = '';
-    $('noResults').style.display = 'none';
-  }
 }
 
 /* Start */
