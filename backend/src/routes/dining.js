@@ -35,9 +35,9 @@ router.get('/', (req, res) => {
  * Fetch all dining halls with menus for the next N days
  */
 router.get('/all', async (req, res) => {
-  const days = Number.parseInt(req.query.days, 10) || 7;
+  const days = 7;
   const dates = getNextNDates(days);
-
+  
   try {
     const halls = await Promise.all(
       LOCATIONS.map((hall) => buildHallScheduleFromDB(hall, dates))
@@ -197,16 +197,19 @@ function getNextNDates(n) {
 
   for (let i = 0; i < n; i++) {
     const d = new Date(today);
+    console.log('d', d);
     d.setDate(today.getDate() + i);
-    const iso = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    
+    // Get local date in YYYY-MM-DD format (avoiding UTC timezone issues)
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const iso = `${year}-${month}-${day}`;
+    
     dates.push(iso);
   }
 
   return dates;
-}
-
-function toTitleCase(str) {
-  return str.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 module.exports = router;

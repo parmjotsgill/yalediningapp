@@ -1,54 +1,67 @@
-require('dotenv').config();  // Load environment variables first
+require('dotenv').config(); // Load env first
+
 const express = require('express');
-const routes = require('./routes');
 const cors = require('cors');
-const db = require('./db/connection');  // Import database connection
-const { setupCronJobs, setupTestCron } = require('./cron/jobs');  // Import cron jobs
+const helmet = require('helmet');
+const compression = require('compression');
+
+const routes = require('./routes');
+const db = require('./db/connection');
+const { setupCronJobs, setupTestCron } = require('./cron/jobs');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Parse JSON bodies (for future POST/PUT)
-app.use(express.json());
-app.use(cors());
+// Security & perf
+app.set('trust proxy', 1);
+app.use(helmet());
+app.use(compression());
 
-// Mount all API routes under /api
+// Body parsing
+app.use(express.json());
+
+// CORS (add any other frontend origins you use)
+const allowedOrigins = [
+  'https://eatyale.io',
+  // 'https://palegoldenrod-cassowary-131857.hostingersite.com',
+  // 'https://your-frontend-preview.onrender.com'
+];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// Routes
 app.use('/api', routes);
 
-// Basic root route (optional)
+// Root
 app.get('/', (req, res) => {
   res.json({
     message: 'YalDiningApp backend is running',
     status: 'online',
     database: 'connected',
     cronMode: process.env.CRON_MODE || 'disabled',
-    endpoints: {
-      dining: '/api/dining',
-      halls: '/api/dining/halls'
-    }
+    endpoints: { dining: '/api/dining', halls: '/api/dining/halls' }
   });
 });
 
-// Health check endpoint to verify database connection
+// Health check
 app.get('/health', async (req, res) => {
   try {
     await db.testConnection();
-    res.json({ 
+    res.json({
       status: 'healthy',
       database: 'connected',
       cronMode: process.env.CRON_MODE || 'disabled',
       timestamp: new Date().toISOString()
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
-      error: err.message 
+      error: err.message
     });
   }
 });
 
-// Initialize cron jobs based on CRON_MODE environment variable
+// Cron init
 const cronMode = process.env.CRON_MODE;
 if (cronMode === 'test') {
   console.log('🧪 Starting in TEST mode - cron runs every minute');
@@ -57,35 +70,34 @@ if (cronMode === 'test') {
   console.log('🚀 Starting in PRODUCTION mode - cron runs at 1 AM daily');
   setupCronJobs();
 } else {
-  console.log('⏸️  Cron jobs disabled (set CRON_MODE=test or CRON_MODE=production in .env)');
+  console.log('⏸️  Cron jobs disabled (set CRON_MODE=test or CRON_MODE=production)');
 }
 
-// Graceful shutdown - close database connections when server stops
+// Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server and database connections');
+  console.log('SIGTERM: closing DB pool');
   await db.closePool();
   process.exit(0);
 });
-
 process.on('SIGINT', async () => {
-  console.log('SIGINT signal received: closing HTTP server and database connections');
+  console.log('SIGINT: closing DB pool');
   await db.closePool();
   process.exit(0);
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
-  ╔════════════════════════════════════════╗
-  ║   YalDiningApp Backend Server          ║
-  ╠════════════════════════════════════════╣
-  ║   🚀 Server running on port ${PORT}       ║
-  ║   🗄️  Database: ${process.env.DB_NAME || 'MySQL'}
-  ║   📡 API available at /api             ║
-  ║   ❤️  Health check at /health          ║
-  ║   ⏰ Cron mode: ${cronMode || 'disabled'}             ║
-  ╚════════════════════════════════════════╝
-  `);
+╔════════════════════════════════════════╗
+║   YalDiningApp Backend Server          ║
+╠════════════════════════════════════════╣
+║   🚀 Port: ${PORT}                         
+║   🗄️  Database: ${process.env.DB_NAME || 'MySQL'}
+║   📡 API: /api                         
+║   ❤️  Health: /health                  
+║   ⏰ Cron: ${cronMode || 'disabled'}                    
+╚════════════════════════════════════════╝
+`);
 });
 
 module.exports = app;

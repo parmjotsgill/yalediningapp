@@ -1,14 +1,16 @@
 /**
- * Daily Menu Sync Cron Job
- * Fetches menu data from Nutrislice API and updates database
- * Overwrites existing entries for the same date/hall/meal
+ * Daily Menu Sync Cron Job - CORRECTED FOR ACTUAL API STRUCTURE
+ * Based on real Nutrislice API response analysis
+ * 
+ * KEY FINDING: Dietary tags are in food.icons.food_icons array!
+ * Each food_icon has: { name: "Vegan", slug: "vegan", type: 1, ... }
  */
 
  const { getMenu } = require('../services/nutrislice');
  const db = require('../db/connection');
  
  // Configuration
- const DAYS_TO_FETCH = 7; // Fetch next 7 days of menus
+ const DAYS_TO_FETCH = 7;
  
  // Yale residential college dining halls
  const DINING_HALLS = [
@@ -33,22 +35,117 @@
  /**
   * Get next N dates in YYYY-MM-DD format
   */
- function getNextNDates(n) {
-   const dates = [];
-   const today = new Date();
+  function getNextNDates(n) {
+    const dates = [];
+    const today = new Date();
+  
+    for (let i = 0; i < n; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      
+      // Get local date in YYYY-MM-DD format (avoiding UTC timezone issues)
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const iso = `${year}-${month}-${day}`;
+      
+      dates.push(iso);
+    }
+  
+    return dates;
+  }
  
-   for (let i = 0; i < n; i++) {
-     const d = new Date(today);
-     d.setDate(today.getDate() + i);
-     const iso = d.toISOString().slice(0, 10);
-     dates.push(iso);
+ /**
+  * Extract dietary tags from food.icons.food_icons
+  * CORRECTED: Based on actual API structure
+  */
+ function extractDietaryTags(item) {
+   const tags = [];
+   
+   if (!item.food || !item.food.icons || !item.food.icons.food_icons) {
+     return tags;
    }
+   
+   const foodIcons = item.food.icons.food_icons;
+   
+   if (!Array.isArray(foodIcons)) {
+     return tags;
+   }
+   
+   // Extract dietary preference icons
+   foodIcons.forEach(icon => {
+     if (icon && icon.name && icon.name.trim()) {
+       // Common dietary tags from Yale's system:
+       // "Vegan", "Vegetarian", "Gluten Free", "Halal", "Kosher", etc.
+       tags.push(icon.name.trim());
+     }
+   });
+   
+   return [...new Set(tags)]; // Remove duplicates
+ }
  
-   return dates;
+ /**
+  * Extract allergens from food.icons.food_icons
+  * CORRECTED: Based on actual API structure
+  * Note: Allergens are also in food_icons but with type=1 and behavior=1
+  */
+ function extractAllergens(item) {
+   const allergens = [];
+   
+   if (!item.food || !item.food.icons || !item.food.icons.food_icons) {
+     return allergens;
+   }
+   
+   const foodIcons = item.food.icons.food_icons;
+   
+   if (!Array.isArray(foodIcons)) {
+     return allergens;
+   }
+   
+   // Extract allergen icons (these are marked with is_filter: true typically)
+   // Common allergens: "Dairy", "Eggs", "Fish", "Shellfish", "Tree Nuts", "Peanuts", "Wheat", "Soybeans"
+   foodIcons.forEach(icon => {
+     if (icon && icon.name && icon.name.trim()) {
+       const name = icon.name.trim();
+       
+       // Check if this is an allergen (common allergen names)
+       const isAllergen = [
+         'dairy', 'milk', 'eggs', 'egg', 'fish', 'shellfish', 
+         'tree nuts', 'peanuts', 'peanut', 'wheat', 'soybeans', 'soy',
+         'sesame', 'gluten'
+       ].some(allergen => name.toLowerCase().includes(allergen));
+       
+       if (isAllergen) {
+         allergens.push(name);
+       }
+     }
+   });
+   
+   return [...new Set(allergens)]; // Remove duplicates
+ }
+ 
+ /**
+  * Get station name from item
+  */
+ function getStationName(menuItems, item) {
+   // Find the most recent station header before this item
+   const itemPosition = item.position;
+   let stationName = '';
+   
+   for (let i = menuItems.length - 1; i >= 0; i--) {
+     const mi = menuItems[i];
+     if (mi.position < itemPosition && mi.is_station_header && mi.text) {
+       stationName = mi.text;
+       break;
+     }
+   }
+   
+   return stationName;
  }
  
  /**
   * Normalize Nutrislice API response to our format
+  * CORRECTED: Based on actual API structure
   */
  function normalizeMeal(nutrisliceData, targetDate) {
    if (!nutrisliceData || !Array.isArray(nutrisliceData.days)) return [];
@@ -64,26 +161,37 @@
  
    if (!day || !Array.isArray(day.menu_items)) return [];
  
-   return day.menu_items.map((item) => {
-     const food = item.food || {};
-     return {
-       name: food.name || item.name || 'Unknown item',
-       station: item.station || '',
-       dietTags:
-         item.food_dietary_preference_names ||
-         item.dietary_preferences ||
-         [],
-       allergens:
-         item.food_allergen_names ||
-         item.allergens ||
-         [],
-     };
+   const menuItems = day.menu_items;
+   const items = [];
+ 
+   menuItems.forEach((item, index) => {
+     // Skip station headers and non-food items
+     if (item.is_station_header || item.is_section_title || !item.food) {
+       return;
+     }
+ 
+     const food = item.food;
+     
+     // Extract dietary tags and allergens from food.icons.food_icons
+     const dietTags = extractDietaryTags(item);
+     const allergens = extractAllergens(item);
+     
+     // Get station name
+     const stationName = getStationName(menuItems.slice(0, index + 1), item);
+     
+     items.push({
+       name: food.name || 'Unknown item',
+       station: stationName || '',
+       dietTags: dietTags,
+       allergens: allergens,
+     });
    });
+ 
+   return items;
  }
  
  /**
   * Delete existing menu items for a specific date, hall, and meal
-  * This allows us to "overwrite" by deleting old data first
   */
  async function deleteExistingMenu(hallId, date, mealType) {
    try {
@@ -92,10 +200,66 @@
        [hallId, date, mealType]
      );
      
-     return result.affectedRows;
+     return result.affectedRows || 0;
    } catch (error) {
      console.error(`❌ Error deleting menu for hall ${hallId}, ${date}, ${mealType}:`, error.message);
      throw error;
+   }
+ }
+ 
+ /**
+  * Get or create a dietary tag, return its ID
+  */
+ async function getOrCreateDietaryTag(connection, tagName) {
+   if (!tagName || !tagName.trim()) return null;
+   
+   const cleanTag = tagName.trim();
+   
+   try {
+     // Insert if not exists
+     await connection.execute(
+       'INSERT IGNORE INTO dietary_tags (tag_name) VALUES (?)',
+       [cleanTag]
+     );
+     
+     // Get the ID
+     const [rows] = await connection.execute(
+       'SELECT id FROM dietary_tags WHERE tag_name = ?',
+       [cleanTag]
+     );
+     
+     return rows.length > 0 ? rows[0].id : null;
+   } catch (error) {
+     console.error(`Error with dietary tag "${cleanTag}":`, error.message);
+     return null;
+   }
+ }
+ 
+ /**
+  * Get or create an allergen, return its ID
+  */
+ async function getOrCreateAllergen(connection, allergenName) {
+   if (!allergenName || !allergenName.trim()) return null;
+   
+   const cleanAllergen = allergenName.trim();
+   
+   try {
+     // Insert if not exists
+     await connection.execute(
+       'INSERT IGNORE INTO allergens (allergen_name) VALUES (?)',
+       [cleanAllergen]
+     );
+     
+     // Get the ID
+     const [rows] = await connection.execute(
+       'SELECT id FROM allergens WHERE allergen_name = ?',
+       [cleanAllergen]
+     );
+     
+     return rows.length > 0 ? rows[0].id : null;
+   } catch (error) {
+     console.error(`Error with allergen "${cleanAllergen}":`, error.message);
+     return null;
    }
  }
  
@@ -111,7 +275,7 @@
      // Skip "Unknown item" entries
      if (item.name === 'Unknown item' || !item.name) {
        await connection.commit();
-       return false;
+       return { success: false, reason: 'unknown' };
      }
      
      // Insert menu item
@@ -122,26 +286,23 @@
      
      const menuItemId = result.insertId;
      
+     let dietTagsAdded = 0;
+     let allergensAdded = 0;
+     
      // Insert dietary tags
      if (item.dietTags && item.dietTags.length > 0) {
        for (const tag of item.dietTags) {
-         if (!tag) continue;
-         
-         await connection.execute(
-           'INSERT IGNORE INTO dietary_tags (tag_name) VALUES (?)',
-           [tag]
-         );
-         
-         const [tagRows] = await connection.execute(
-           'SELECT id FROM dietary_tags WHERE tag_name = ?',
-           [tag]
-         );
-         
-         if (tagRows.length > 0) {
-           await connection.execute(
-             'INSERT IGNORE INTO menu_item_dietary_tags (menu_item_id, dietary_tag_id) VALUES (?, ?)',
-             [menuItemId, tagRows[0].id]
-           );
+         const tagId = await getOrCreateDietaryTag(connection, tag);
+         if (tagId) {
+           try {
+             await connection.execute(
+               'INSERT IGNORE INTO menu_item_dietary_tags (menu_item_id, dietary_tag_id) VALUES (?, ?)',
+               [menuItemId, tagId]
+             );
+             dietTagsAdded++;
+           } catch (err) {
+             console.error(`    ⚠️  Error linking dietary tag "${tag}":`, err.message);
+           }
          }
        }
      }
@@ -149,29 +310,28 @@
      // Insert allergens
      if (item.allergens && item.allergens.length > 0) {
        for (const allergen of item.allergens) {
-         if (!allergen) continue;
-         
-         await connection.execute(
-           'INSERT IGNORE INTO allergens (allergen_name) VALUES (?)',
-           [allergen]
-         );
-         
-         const [allergenRows] = await connection.execute(
-           'SELECT id FROM allergens WHERE allergen_name = ?',
-           [allergen]
-         );
-         
-         if (allergenRows.length > 0) {
-           await connection.execute(
-             'INSERT IGNORE INTO menu_item_allergens (menu_item_id, allergen_id) VALUES (?, ?)',
-             [menuItemId, allergenRows[0].id]
-           );
+         const allergenId = await getOrCreateAllergen(connection, allergen);
+         if (allergenId) {
+           try {
+             await connection.execute(
+               'INSERT IGNORE INTO menu_item_allergens (menu_item_id, allergen_id) VALUES (?, ?)',
+               [menuItemId, allergenId]
+             );
+             allergensAdded++;
+           } catch (err) {
+             console.error(`    ⚠️  Error linking allergen "${allergen}":`, err.message);
+           }
          }
        }
      }
      
      await connection.commit();
-     return true;
+     return { 
+       success: true, 
+       dietTagsAdded, 
+       allergensAdded,
+       itemName: item.name 
+     };
      
    } catch (err) {
      await connection.rollback();
@@ -198,10 +358,10 @@
  
      if (items.length === 0) {
        console.log(`    ⏩ No ${mealType} items from API`);
-       return { imported: 0, skipped: 0, deleted: 0 };
+       return { imported: 0, skipped: 0, deleted: 0, dietTags: 0, allergens: 0 };
      }
  
-     // Delete existing entries (this is the "overwrite")
+     // Delete existing entries
      const deleted = await deleteExistingMenu(hallId, date, mealType);
      
      if (deleted > 0) {
@@ -211,12 +371,21 @@
      // Insert new entries
      let imported = 0;
      let skipped = 0;
+     let totalDietTags = 0;
+     let totalAllergens = 0;
      
      for (const item of items) {
        try {
-         const success = await importMenuItem(hallId, date, mealType, item);
-         if (success) {
+         const result = await importMenuItem(hallId, date, mealType, item);
+         if (result.success) {
            imported++;
+           totalDietTags += result.dietTagsAdded;
+           totalAllergens += result.allergensAdded;
+           
+           // Log items with dietary info (sample - first 3)
+           if ((result.dietTagsAdded > 0 || result.allergensAdded > 0) && imported <= 3) {
+             console.log(`      ✓ ${result.itemName}: ${result.dietTagsAdded} tags, ${result.allergensAdded} allergens`);
+           }
          } else {
            skipped++;
          }
@@ -226,18 +395,18 @@
        }
      }
      
-     console.log(`    ✅ ${mealType}: ${imported} imported, ${skipped} skipped`);
+     console.log(`    ✅ ${mealType}: ${imported} items, ${totalDietTags} diet tags, ${totalAllergens} allergens`);
      
-     return { imported, skipped, deleted };
+     return { imported, skipped, deleted, dietTags: totalDietTags, allergens: totalAllergens };
      
    } catch (error) {
      console.error(`    ❌ Error syncing ${mealType}:`, error.message);
-     return { imported: 0, skipped: 0, deleted: 0 };
+     return { imported: 0, skipped: 0, deleted: 0, dietTags: 0, allergens: 0 };
    }
  }
  
  /**
-  * Main sync function - this runs every day
+  * Main sync function
   */
  async function dailyMenuSync() {
    console.log('\n╔════════════════════════════════════════╗');
@@ -248,23 +417,21 @@
    let totalImported = 0;
    let totalSkipped = 0;
    let totalDeleted = 0;
+   let totalDietTags = 0;
+   let totalAllergens = 0;
    
    try {
      const dates = getNextNDates(DAYS_TO_FETCH);
      console.log(`📅 Syncing ${DAYS_TO_FETCH} days of menus for ${DINING_HALLS.length} halls\n`);
      
-     // Process each hall
      for (const hall of DINING_HALLS) {
        console.log(`📍 ${hall.name} (${hall.slug})`);
        
-       // Get hall ID from database
        const hallRows = await db.query(
          'SELECT id FROM dining_halls WHERE slug = ?',
          [hall.slug]
        );
-       //console.log('hallRows',hallRows)
-       //console.log('hallRows length',hallRows.length)
-       //console.log('hallRows slug',hallRows.slug)
+       
        if (hallRows.length === 0) {
          console.log(`  ⚠️  Hall not found in database: ${hall.slug}\n`);
          continue;
@@ -272,26 +439,28 @@
        
        const hallId = hallRows[0].id;
        
-       // Process each date
        for (const date of dates) {
          console.log(`  📅 ${date}`);
          
-         // Process each meal
          for (const mealType of MEAL_TYPES) {
            const stats = await syncMeal(hallId, hall.slug, date, mealType);
            totalImported += stats.imported;
            totalSkipped += stats.skipped;
            totalDeleted += stats.deleted;
+           totalDietTags += stats.dietTags;
+           totalAllergens += stats.allergens;
          }
        }
        
-       console.log(''); // Empty line between halls
+       console.log('');
      }
      
      console.log('╔════════════════════════════════════════╗');
      console.log('║     Daily Menu Sync Complete           ║');
      console.log('╚════════════════════════════════════════╝');
-     console.log(`✅ Total imported: ${totalImported}`);
+     console.log(`✅ Total imported: ${totalImported} items`);
+     console.log(`🥗 Total dietary tags: ${totalDietTags}`);
+     console.log(`⚠️  Total allergens: ${totalAllergens}`);
      console.log(`🗑️  Total deleted: ${totalDeleted}`);
      console.log(`⏩ Total skipped: ${totalSkipped}`);
      console.log(`🕐 Completed: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}\n`);
@@ -304,8 +473,7 @@
  }
  
  /**
-  * Cleanup old menu data (optional - keeps database lean)
-  * Delete menus older than 7 days
+  * Cleanup old menu data
   */
  async function cleanupOldMenus() {
    try {
@@ -320,27 +488,23 @@
        [dateStr]
      );
      
-     console.log(`✅ Deleted ${result.affectedRows} old menu items (before ${dateStr})\n`);
+     console.log(`✅ Deleted ${result.affectedRows || 0} old menu items (before ${dateStr})\n`);
      
    } catch (error) {
      console.error('❌ Cleanup failed:', error.message);
    }
  }
  
- // Export for use in other files
  module.exports = {
    dailyMenuSync,
    cleanupOldMenus,
    syncMeal
  };
  
- // If running this script directly (for testing)
  if (require.main === module) {
    dailyMenuSync()
      .then(async () => {
-       // Optional: cleanup old data after sync
        await cleanupOldMenus();
-       
        console.log('✅ Script completed successfully');
        process.exit(0);
      })
