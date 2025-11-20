@@ -1,0 +1,191 @@
+# Sprint 3 Planning
+**Yale Dining Hall Comparison Platform**  
+**Team:** alex-the-lion  
+**Sprint Duration:** November 12 - November 19, 2025 (1 week)  
+**Planning Date:** November 11, 2025
+
+---
+
+## Sprint Goal
+
+**"Deliver a functional MVP deployed to staging that supports a complete end-to-end user journey with working UI/UX improvements, stable staging deployment, and integration of core filtering and data pipeline features ahead of Sprint 4."**
+
+### Success Criteria
+- Unified menu comparison table displays real scraped data
+- Meal period and dietary filters are fully functional
+- Mobile-responsive design works across devices (375px+ width)
+- Staging environment is deployed and accessible at yale-dining-staging.onrender.com
+- Automated scraper runs daily and logs errors appropriately
+- At least one complete user journey is demonstrable end-to-end
+
+---
+
+## Selected User Stories from Backlog
+
+| Story # | Title | Story Points | Priority | Assignee | Epic |
+|---------|-------|--------------|----------|----------|------|
+| #3 | Deploy to Render staging environment | 3 | High | Louis & Sachit | Foundation |
+| #9 | Implement dietary preference filters (vegan/vegetarian/gluten-free/halal) | 5 | High | Parm | Menu Display |
+| #10 | Create responsive mobile layout | 5 | High | Piquet | Menu Display |
+| #11 | Display dish count indicator | 2 | Low | Parm | Menu Display |
+| #12 | Create empty state for no filter matches | 3 | Medium | Piquet | Menu Display |
+| #13 | Create dish detail modal/page | 5 | Medium | Parm | Dish Details |
+| #14 | Display dietary tags as visual badges | 3 | Medium | Piquet | Dish Details |
+| #16 | Set up daily automated scraper cron job | 8 | High | Louis | Data Pipeline |
+| #17 | Create scraper error logging system | 3 | Medium | Sachit | Data Pipeline |
+| #18 | Implement scraper retry logic | 3 | Low | Sachit | Data Pipeline |
+
+**Total Committed Story Points:** 40  
+**Total Stories Committed:** 10
+
+---
+
+## Team Capacity & Velocity
+
+### Team Capacity
+- **Available Hours:** 4 developers × 20 hours/week × 1 week = 80 hours
+- **Sprint 2 Velocity:** 28 story points completed
+- **Estimated Velocity for Sprint 3:** 35-40 story points (slight increase due to team familiarity)
+
+### Team Assignments
+
+**Parm (Scrum Master) - 10 points**
+- Story #9: Dietary preference filters (5 pts)
+- Story #11: Dish count indicator (2 pts)
+- Story #13: Dish detail modal (5 pts)
+- Sprint facilitation duties
+
+**Louis (Development Lead) - 11 points**
+- Story #3: Render staging deployment (3 pts) - Pair with Sachit
+- Story #16: Automated scraper cron job (8 pts)
+- Code review responsibilities
+
+**Piquet (Product Owner) - 11 points**
+- Story #10: Responsive mobile layout (5 pts)
+- Story #12: Empty state for no matches (3 pts)
+- Story #14: Dietary tags visual badges (3 pts)
+- Product Owner acceptance testing
+
+**Sachit (Developer) - 9 points**
+- Story #3: Render staging deployment (3 pts) - Pair with Louis
+- Story #17: Scraper error logging (3 pts)
+- Story #18: Scraper retry logic (3 pts)
+
+---
+
+## Dependencies & Risks
+
+### Critical Path Dependencies
+
+1. **Story #16 (Automated scraper)** must complete **by Day 3** before:
+   - Story #17 (Error logging) can be tested
+   - Story #18 (Retry logic) can be implemented
+
+2. **Story #3 (Render deployment)** should complete **by Day 4** to enable:
+   - End-to-end testing in staging environment
+   - Stakeholder demos of deployed application
+
+3. **Story #9 (Dietary filters)** should complete **by Day 3** before:
+   - Story #12 (Empty state) can be fully tested with filter combinations
+
+### Identified Risks
+
+| Risk | Probability | Impact | Mitigation Strategy | Owner |
+|------|-------------|--------|---------------------|-------|
+| Render deployment complexity underestimated | Medium | High | Allocate Louis + Sachit pairing; research Render docs before starting; budget extra 2-3 hours | Louis |
+| Scraper cron job (8 pts) is largest story | Medium | Medium | Break into subtasks; daily check-ins on progress; Louis prioritizes this early in sprint | Louis |
+| Thanksgiving week approaching (Nov 21-24) | High | Medium | Complete all critical work by Nov 19; avoid carrying over high-risk items | Team |
+| Mobile responsive design may uncover edge cases | Medium | Low | Piquet to test on multiple devices (iPhone, Android, tablet); iterate quickly | Piquet |
+| Empty state depends on filter implementation | Low | Low | Parm completes filters by Day 3; Piquet begins empty state Day 4 | Parm/Piquet |
+
+### Assumptions
+- Yale Dining website HTML structure remains stable (scraper won't break)
+- Render free tier has sufficient capacity for staging deployment
+- No major stakeholder requirement changes mid-sprint
+- Team members have 20 hours/week availability as planned
+
+---
+
+## Definition of Done (Sprint 3)
+
+For each user story to be marked "Done":
+
+**Code Quality:**
+- [ ] All acceptance criteria met and manually verified
+- [ ] Code merged to `develop` branch via pull request
+- [ ] Minimum 1 code review approval (Louis reviews all PRs)
+- [ ] No merge conflicts with `develop`
+
+**Testing:**
+- [ ] Manual testing completed by developer in local environment
+- [ ] Manual QA completed by different team member in staging
+- [ ] Mobile responsive testing on iPhone and Android devices (for UI stories)
+
+**Deployment:**
+- [ ] Feature deployed to staging environment
+- [ ] Staging deployment verified working (no 500 errors)
+- [ ] No critical or high-severity bugs blocking user testing
+
+**Documentation:**
+- [ ] README updated if setup instructions changed
+- [ ] Inline code comments for complex logic
+- [ ] Django admin registered for new models
+
+**Product Owner Acceptance:**
+- [ ] Piquet has reviewed and accepted the work
+
+---
+
+## Sprint Ceremonies Schedule
+
+| Ceremony | Day/Time | Duration | Attendees |
+|----------|----------|----------|-----------|
+| **Sprint Planning** | Monday Nov 11, 6:00 PM EST | 90 min | All |
+| **Daily Standup** | Mon/Wed/Fri, 4:00 PM EST | 15 min | All |
+| **Async Standup** | Tue/Thu via Slack #standup | 5 min | All |
+| **Mid-Sprint Check-in** | Thursday Nov 14, 5:00 PM EST | 30 min | All |
+| **Sprint Review** | Tuesday Nov 19, 5:00 PM EST | 60 min | All + Kyle (stakeholder) |
+| **Sprint Retrospective** | Tuesday Nov 19, 6:15 PM EST | 45 min | Team only |
+
+---
+
+## Sprint Backlog Task Breakdown (Example)
+
+### Story #9: Implement dietary preference filters (5 points)
+
+**Tasks:**
+- [ ] Create filter button UI with Tailwind CSS (Breakfast/Lunch/Dinner) - 2 hours
+- [ ] Add dietary tag checkboxes (Vegan, Vegetarian, Gluten-Free, Halal) - 2 hours
+- [ ] Implement Django view filtering logic based on dietary tags - 3 hours
+- [ ] Connect frontend buttons to backend filter endpoints - 2 hours
+- [ ] Test filter combinations (e.g., Vegan + Lunch) - 1 hour
+- [ ] Style active filter states (blue highlight) - 1 hour
+- [ ] Add "Clear all filters" button - 1 hour
+- [ ] Code review and merge - 1 hour
+
+**Total Estimated Hours:** 13 hours (~5 story points at 2.5 hours/point)
+
+---
+
+## Notes from Planning Session
+
+**Key Decisions:**
+- Prioritized deployment (Story #3) early to unblock staging testing
+- Louis to focus exclusively on scraper (Story #16) as it's the largest/riskiest story
+- Piquet will handle all UI polish stories (#10, #12, #14) for design consistency
+- Team agreed to drop Story #11 (dish count) if time runs short - lowest priority
+
+**Open Questions:**
+- Do we need CAPTCHA on reactions? (Deferred to Sprint 4 discussion)
+- Should we use Google Analytics or Plausible? (Kyle to advise)
+
+**Team Confidence Level:** 7/10
+- Confident in filtering and UI stories
+- Moderate concern about Render deployment complexity
+- High confidence in scraper implementation (Louis has experience)
+
+---
+
+**Document Prepared By:** Parm (Scrum Master)  
+**Date:** November 11, 2025  
+**Next Review:** Sprint 3 Review on November 19, 2025
