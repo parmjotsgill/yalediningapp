@@ -6,14 +6,14 @@
 <title>Yale Dining — Compare Menus</title>
 
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2GN1DX6608"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  
+
   // Initialize GA with your measurement ID
-  gtag('config', 'GA_MEASUREMENT_ID', {
+  gtag('config', 'G-2GN1DX6608', {
     page_title: 'Yale Dining Menu Comparison',
     page_location: window.location.href
   });
@@ -522,7 +522,11 @@
 
 <script>
 /* CONFIG */
-const API = 'http://localhost:4000/api/dining/all?days=7';
+const API_BASE = location.hostname.includes('localhost')
+  ? 'http://localhost:4000'
+  : 'https://yalediningapp.onrender.com';
+
+const API = `${API_BASE}/api/dining/all?days=7`;
 const PREFS_KEY = 'yaleDiningPreferences';
 
 /* Google Analytics Event Tracking Helper */
