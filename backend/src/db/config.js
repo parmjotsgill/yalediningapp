@@ -7,7 +7,7 @@
 
  module.exports = {
    // Database connection settings
-   host: process.env.DB_HOST || '82.197.82.44',
+   host: process.env.DB_HOST || 'srv1537.hstgr.io',
    port: process.env.DB_PORT || 3306,
    user: process.env.DB_USER || 'u382494441_sachit',
    password: process.env.DB_PASSWORD || '656TeamPK',
